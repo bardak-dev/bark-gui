@@ -1,6 +1,6 @@
 # Bark Web UI
 
-![This is a Web UI for Bark using Gradio.]
+This is a simple Web UI for Bark using Gradio.
 
 ### Installation
 
@@ -10,7 +10,7 @@
 
 ### Usage
 
-Linux `python webui.py`
-Windows Use the `StartBark.bat`
+- Linux `python webui.py`
+- Windows Use the `StartBark.bat`
 
 Check out the original [Bark](https://github.com/suno-ai/bark) repository for information.
