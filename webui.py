@@ -48,15 +48,15 @@ waveform_temp = gr.Slider(
     0.1, 1.0, value=0.7, label="Waveform temperature", info="1.0 more diverse, 0.1 more conservative"
 )
 output_audio = gr.Audio(label="Generated Audio", type="filepath")
-speaker = gr.Dropdown(speakers_list, value=speakers_list[0], label="Acoustic Prompt")
+speaker = gr.Dropdown(speakers_list, value=speakers_list[0], label="Voice")
 
 
 interface = gr.Interface(
     fn=generate_text_to_speech,
     inputs=[input_text, speaker, text_temp, waveform_temp],
     outputs=output_audio,
-    title="Text-to-Speech using Bark",
-    description="A simple Bark TTS Web UI.",
+    title="Bark GUI",
+    description="Web UI for Bark TTS.",
     allow_flagging="never"
 )
 

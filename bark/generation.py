@@ -4,6 +4,7 @@ import hashlib
 import os
 import re
 import requests
+import gc
 
 from encodec import EncodecModel
 import funcy
@@ -82,7 +83,9 @@ default_cache_dir = os.path.join(os.path.expanduser("~"), ".cache")
 CACHE_DIR = os.path.join(os.getenv("XDG_CACHE_HOME", default_cache_dir), "suno", "bark_v0")
 
 
-USE_SMALL_MODELS = os.environ.get("SUNO_USE_SMALL_MODELS", False)
+#USE_SMALL_MODELS = os.environ.get("SUNO_USE_SMALL_MODELS", False)
+# Always use small models for now
+USE_SMALL_MODELS = True
 
 REMOTE_BASE_URL = "https://dl.suno-models.io/bark/models/v0/"
 
@@ -162,7 +165,7 @@ def _download(from_s3_path, to_local_path):
             file.write(data)
     progress_bar.close()
     if total_size_in_bytes != 0 and progress_bar.n != total_size_in_bytes:
-        raise ValueError("ERROR, something went wrong")
+        raise ValueError("Error  while downloading {from_s3_path} to {to_local_path}")
 
 
 class InferenceContext:
@@ -220,6 +223,14 @@ def _load_model(ckpt_path, device, use_small=False, model_type="text"):
         ModelClass = FineGPT
     else:
         raise NotImplementedError()
+
+    # Force-remove Models to allow running on >12Gb GPU
+    global models
+    models.clear()
+    gc.collect()
+    torch.cuda.empty_cache()
+    # to here...
+
     model_key = f"{model_type}_small" if use_small or USE_SMALL_MODELS else model_type
     model_info = REMOTE_MODEL_PATHS[model_key]
     if (
