@@ -1,4 +1,12 @@
 {
-  "ExpandedNodes": [],
+  "ExpandedNodes": [
+    "",
+    "\\bark",
+    "\\bark\\assets",
+    "\\bark\\assets\\prompts",
+    "\\input",
+    "\\outputs"
+  ],
+  "SelectedNode": "\\bark\\assets\\prompts\\pl_speaker_0.npz",
   "PreviewInSolutionExplorer": false
 }
