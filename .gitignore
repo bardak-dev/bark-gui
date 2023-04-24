@@ -1,2 +1,9 @@
 __pycache__/
 /outputs/04-23-2023
+/bark/assets/prompts/merkel.npz
+/speakers
+/_temp
+/input
+/webui_prev.py
+/outputs/04-24-2023
+/bark/assets/prompts/attenborough.npz
