@@ -1,4 +1,5 @@
-﻿import gradio as gr
+﻿from cProfile import label
+import gradio as gr
 import os
 import re
 import numpy as np
@@ -218,7 +219,8 @@ for file in os.listdir("./bark/assets/prompts"):
         speakers_list.append(file[:-4])
 
 
-with gr.Blocks() as barkgui:
+with gr.Blocks(title="Bark Enhanced Gradio GUI", mode="Bark Enhanced") as barkgui:
+    gr.Markdown("### [Bark Enhanced](https://github.com/C0untFloyd/bark-gui)")
     with gr.Tab("TTS"):
         placeholder = """Enter text here. Special meanings: [laughter] [laughs] [sighs] [music] [gasps] [clears throat]
 — or ... for hesitations
