@@ -1,0 +1,18 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "python",
+      "interpreter": "(default)",
+      "interpreterArguments": "",
+      "scriptArguments": "-smallmodels -autolaunch",
+      "env": {},
+      "nativeDebug": false,
+      "webBrowserUrl": "",
+      "project": "webui.py",
+      "projectTarget": "",
+      "name": "webui.py"
+    }
+  ]
+}

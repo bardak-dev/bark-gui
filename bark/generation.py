@@ -18,8 +18,10 @@ from transformers import BertTokenizer
 
 from .model import GPTConfig, GPT
 from .model_fine import FineGPT, FineGPTConfig
+from .settings import force_cpu, small_models
 
 if (
+    force_cpu == False and
     torch.cuda.is_available() and
     hasattr(torch.cuda, "amp") and
     hasattr(torch.cuda.amp, "autocast") and
@@ -36,7 +38,6 @@ else:
 # hold models in global scope to lazy load
 global models
 models = {}
-
 
 CONTEXT_WINDOW_SIZE = 1024
 
@@ -84,8 +85,8 @@ CACHE_DIR = os.path.join(os.getenv("XDG_CACHE_HOME", default_cache_dir), "suno",
 
 
 #USE_SMALL_MODELS = os.environ.get("SUNO_USE_SMALL_MODELS", False)
-# Always use small models for now
-USE_SMALL_MODELS = True
+# Use launch parameters now
+USE_SMALL_MODELS = small_models
 
 REMOTE_BASE_URL = "https://dl.suno-models.io/bark/models/v0/"
 
@@ -225,6 +226,7 @@ def _load_model(ckpt_path, device, use_small=False, model_type="text"):
         raise NotImplementedError()
 
     # Force-remove Models to allow running on >12Gb GPU
+    #clean_models();
     global models
     models.clear()
     gc.collect()

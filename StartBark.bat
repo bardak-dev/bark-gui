@@ -1,5 +1,7 @@
 @echo off
 REM Remove the REM from the next line to stay up-to-date
 REM git pull
-set COMMANDLINE_ARGS=--lowmem --autolaunch
-python webui.py
+REM set COMMANDLINE_ARGS=-smallmodels -autolaunch -forcecpu
+set COMMANDLINE_ARGS=-smallmodels -autolaunch
+python webui.py %COMMANDLINE_ARGS%
+pause

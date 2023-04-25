@@ -2,8 +2,11 @@
 import gradio as gr
 import os
 import re
+import sys
 import numpy as np
 import logging
+import torch
+
 from bark import SAMPLE_RATE, generate_audio
 from bark.clonevoice import clone_voice
 from bark.generation import SAMPLE_RATE, preload_models, codec_decode, generate_coarse, generate_fine, generate_text_semantic
@@ -11,6 +14,8 @@ from scipy.io.wavfile import write as write_wav
 from datetime import datetime
 from time import time
 from tqdm.auto import tqdm
+
+from bark.settings import force_cpu, small_models
 
 
 # Most of the chunked generation ripped from https://github.com/serp-ai/bark-with-voice-clone
@@ -121,10 +126,15 @@ def generate_with_settings(text_prompt, semantic_temp=0.7, semantic_top_k=50, se
     return codec_decode(x_fine_gen)
 
 def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, quick_generation, complete_settings):
+    if text == None or len(text) < 1:
+        return
 
     # Chunk the text into smaller pieces then combine the generated audio
 
     # generation settings
+    if selected_speaker == 'None':
+        selected_speaker = None
+
     voice_name = selected_speaker
 
     semantic_temp = text_temp
@@ -137,23 +147,22 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, qu
 
     fine_temp = 0.5
 
-    use_semantic_history_prompt = True
-    use_coarse_history_prompt = True
-    use_fine_history_prompt = True
-
-    use_last_generation_as_history = True
+    use_semantic_history_prompt = "Use semantic history" in complete_settings
+    use_coarse_history_prompt = "Use coarse history" in complete_settings
+    use_fine_history_prompt = "Use fine history" in complete_settings
+    use_last_generation_as_history = "Use last generation as history" in complete_settings
 
     texts = split_and_recombine_text(text)
 
     all_parts = []
     for i, text in tqdm(enumerate(texts), total=len(texts)):
         if quick_generation == True:
-            logger.warning(f"Generating Text ({i+1}/{len(texts)}) -> `{text}`")
+            print(f"Generating Text ({i+1}/{len(texts)}) -> `{text}`")
             audio_array = generate_audio(text, selected_speaker, text_temp, waveform_temp)
             i+=1
 
         else:
-            logger.warning(f"Generating Text ({i+1}/{len(texts)}) -> `{text}`")
+            print(f"Generating Text ({i+1}/{len(texts)}) -> `{text}`")
             full_generation, audio_array = generate_with_settings(
                 text,
                 semantic_temp=semantic_temp,
@@ -170,21 +179,9 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, qu
                 output_full=True
             )
             i+=1
-        now = datetime.now()
-        date_str = now.strftime("%m-%d-%Y")
-        time_str = now.strftime("%H-%M-%S")
 
-        outputs_folder = os.path.join(os.getcwd(), "outputs")
-        if not os.path.exists(outputs_folder):
-            os.makedirs(outputs_folder)
-
-        sub_folder = os.path.join(outputs_folder, date_str)
-        if not os.path.exists(sub_folder):
-            os.makedirs(sub_folder)
-
-        file_name = f"audio_{time_str}.wav"
-        temp_path = os.path.join(sub_folder, file_name)
-        write_wav(temp_path, SAMPLE_RATE, audio_array)
+        if len(texts) > 1:
+            save_wav(audio_array, "audio")
 
         if quick_generation == False & use_last_generation_as_history:
             # save to npz
@@ -200,24 +197,53 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, qu
 
     audio_array = np.concatenate(all_parts, axis=-1)
 
-    # save audio
-    file_name = f"final_{time_str}.wav"
+    # save & play audio
+    return save_wav(audio_array, "final")
+
+def save_wav(audio_array, name):
+    now = datetime.now()
+    date_str = now.strftime("%m-%d-%Y")
+    time_str = now.strftime("%H-%M-%S")
+
+    outputs_folder = os.path.join(os.getcwd(), "outputs")
+    if not os.path.exists(outputs_folder):
+        os.makedirs(outputs_folder)
+
+    sub_folder = os.path.join(outputs_folder, date_str)
+    if not os.path.exists(sub_folder):
+        os.makedirs(sub_folder)
+
+    file_name = f"{name}_{time_str}.wav"
     temp_path = os.path.join(sub_folder, file_name)
     write_wav(temp_path, SAMPLE_RATE, audio_array)
-
-    # play audio
     return temp_path
-    #Audio(audio_array, rate=SAMPLE_RATE)
 
 
 logger = logging.getLogger(__name__)
 
-speakers_list = ['None']
+autolaunch = False
 
+if len(sys.argv) > 1:
+    force_cpu = "-forcecpu" in sys.argv
+    small_models = "-smallmodels" in sys.argv
+    autolaunch = "-autolaunch" in sys.argv
+
+
+if torch.cuda.is_available() == False:
+    force_cpu = True
+    logger.warning("No CUDA detected, fallback to CPU!")
+
+print(f'smallmodels={small_models}')
+print(f'forcecpu={force_cpu}')
+print(f'autolaunch={autolaunch}\n')
+
+# Collect all existing speakers/voices in dir
+speakers_list = ['None']
 for file in os.listdir("./bark/assets/prompts"): 
     if file.endswith(".npz"):
         speakers_list.append(file[:-4])
 
+# Create Gradio Blocks
 
 with gr.Blocks(title="Bark Enhanced Gradio GUI", mode="Bark Enhanced") as barkgui:
     gr.Markdown("### [Bark Enhanced](https://github.com/C0untFloyd/bark-gui)")
@@ -236,12 +262,9 @@ with gr.Blocks(title="Bark Enhanced Gradio GUI", mode="Bark Enhanced") as barkgu
         )
         waveform_temp = gr.Slider(0.1, 1.0, value=0.7, label="Waveform temperature", info="1.0 more diverse, 0.1 more conservative")
 
-        quick_gen_checkbox = gr.Checkbox(label="Quick Generation", value=False)
-        complete_settings = gr.CheckboxGroup( ["Use semantic history", "Use coarse history", "Use fine_history", "Use last generation as history"], label="Generation Settings", type="value")
-        #use_semantic_history_checkbox = gr.Checkbox(label="Use semantic history", value=True)
-        #use_coarse_history_checkbox = gr.Checkbox(label="Use coarse history", value=True)
-        #use_fine_history_checkbox = gr.Checkbox(label="Use fine history", value=True)
-        #use_last_generation_checkbox = gr.Checkbox(label="Use last generation as history", value=True)
+        quick_gen_checkbox = gr.Checkbox(label="Quick Generation", value=True)
+        settings_checkboxes = ["Use semantic history", "Use coarse history", "Use fine history", "Use last generation as history"]
+        complete_settings = gr.CheckboxGroup(choices=settings_checkboxes, value=settings_checkboxes, label="Generation Settings", type="value")
         output_audio = gr.Audio(label="Generated Audio", type="filepath")
         tts_create_button = gr.Button("Create")
     with gr.Tab("Clone Voice"):
@@ -255,4 +278,4 @@ with gr.Blocks(title="Bark Enhanced Gradio GUI", mode="Bark Enhanced") as barkgu
         tts_create_button.click(generate_text_to_speech, inputs=[input_text, speaker, text_temp, waveform_temp, quick_gen_checkbox, complete_settings],outputs=output_audio)
         clone_voice_button.click(clone_voice, inputs=[input_audio_filename, transcription_text, output_voice])
 
-barkgui.launch(inbrowser=True)
+barkgui.launch(inbrowser=autolaunch)
