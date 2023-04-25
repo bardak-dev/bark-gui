@@ -15,8 +15,6 @@ from datetime import datetime
 from time import time
 from tqdm.auto import tqdm
 
-from bark.settings import force_cpu, small_models
-
 
 # Most of the chunked generation ripped from https://github.com/serp-ai/bark-with-voice-clone
 def split_and_recombine_text(text, desired_length=100, max_length=150):
@@ -94,6 +92,7 @@ def split_and_recombine_text(text, desired_length=100, max_length=150):
     return rv
 
 def generate_with_settings(text_prompt, semantic_temp=0.7, semantic_top_k=50, semantic_top_p=0.95, coarse_temp=0.7, coarse_top_k=50, coarse_top_p=0.95, fine_temp=0.5, voice_name=None, use_semantic_history_prompt=True, use_coarse_history_prompt=True, use_fine_history_prompt=True, output_full=False):
+    use_gpu = not os.environ.get("BARK_FORCE_CPU", False)
     # generation with more control
     x_semantic = generate_text_semantic(
         text_prompt,
@@ -101,6 +100,7 @@ def generate_with_settings(text_prompt, semantic_temp=0.7, semantic_top_k=50, se
         temp=semantic_temp,
         top_k=semantic_top_k,
         top_p=semantic_top_p,
+        use_gpu=use_gpu
     )
 
     x_coarse_gen = generate_coarse(
@@ -109,20 +109,22 @@ def generate_with_settings(text_prompt, semantic_temp=0.7, semantic_top_k=50, se
         temp=coarse_temp,
         top_k=coarse_top_k,
         top_p=coarse_top_p,
+        use_gpu=use_gpu
     )
     x_fine_gen = generate_fine(
         x_coarse_gen,
         history_prompt=voice_name if use_fine_history_prompt else None,
         temp=fine_temp,
+        use_gpu=use_gpu
     )
 
     if output_full:
         full_generation = {
             'semantic_prompt': x_semantic,
             'coarse_prompt': x_coarse_gen,
-            'fine_prompt': x_fine_gen,
+            'fine_prompt': x_fine_gen
         }
-        return full_generation, codec_decode(x_fine_gen)
+        return full_generation, codec_decode(x_fine_gen, use_gpu=use_gpu)
     return codec_decode(x_fine_gen)
 
 def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, quick_generation, complete_settings):
@@ -224,18 +226,18 @@ logger = logging.getLogger(__name__)
 autolaunch = False
 
 if len(sys.argv) > 1:
-    force_cpu = "-forcecpu" in sys.argv
-    small_models = "-smallmodels" in sys.argv
     autolaunch = "-autolaunch" in sys.argv
 
 
 if torch.cuda.is_available() == False:
-    force_cpu = True
+    os.environ['BARK_FORCE_CPU'] = 'True'
     logger.warning("No CUDA detected, fallback to CPU!")
 
-print(f'smallmodels={small_models}')
-print(f'forcecpu={force_cpu}')
+print(f'smallmodels={os.environ.get("SUNO_USE_SMALL_MODELS", False)}')
+print(f'forcecpu={os.environ.get("BARK_FORCE_CPU", False)}')
 print(f'autolaunch={autolaunch}\n')
+
+
 
 # Collect all existing speakers/voices in dir
 speakers_list = ['None']

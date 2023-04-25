@@ -5,6 +5,7 @@ import os
 import re
 import requests
 import gc
+import sys
 
 from encodec import EncodecModel
 import funcy
@@ -18,10 +19,12 @@ from transformers import BertTokenizer
 
 from .model import GPTConfig, GPT
 from .model_fine import FineGPT, FineGPTConfig
-from .settings import force_cpu, small_models
+from .settings import initenv
 
+initenv(sys.argv)
+global_force_cpu = os.environ.get("BARK_FORCE_CPU", False)
 if (
-    force_cpu == False and
+    global_force_cpu == False and
     torch.cuda.is_available() and
     hasattr(torch.cuda, "amp") and
     hasattr(torch.cuda.amp, "autocast") and
@@ -84,9 +87,7 @@ default_cache_dir = os.path.join(os.path.expanduser("~"), ".cache")
 CACHE_DIR = os.path.join(os.getenv("XDG_CACHE_HOME", default_cache_dir), "suno", "bark_v0")
 
 
-#USE_SMALL_MODELS = os.environ.get("SUNO_USE_SMALL_MODELS", False)
-# Use launch parameters now
-USE_SMALL_MODELS = small_models
+USE_SMALL_MODELS = os.environ.get("SUNO_USE_SMALL_MODELS", False)
 
 REMOTE_BASE_URL = "https://dl.suno-models.io/bark/models/v0/"
 
@@ -387,6 +388,7 @@ def generate_text_semantic(
     model=None,
     use_kv_caching=False
 ):
+    use_gpu = not global_force_cpu
     """Generate semantic tokens from text."""
     assert isinstance(text, str)
     text = _normalize_whitespace(text)

@@ -6,7 +6,7 @@
       "type": "python",
       "interpreter": "(default)",
       "interpreterArguments": "",
-      "scriptArguments": "-smallmodels -autolaunch",
+      "scriptArguments": "-forcecpu -smallmodels -autolaunch",
       "env": {},
       "nativeDebug": false,
       "webBrowserUrl": "",
