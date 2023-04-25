@@ -2,7 +2,7 @@ from bark.generation import load_codec_model, generate_text_semantic
 from encodec.utils import convert_audio
 import torchaudio
 import torch
-from bark.settings import force_cpu
+from .settings import force_cpu
 
 
 def clone_voice(audio_filepath, text, dest_filename):
