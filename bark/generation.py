@@ -24,7 +24,7 @@ from .settings import initenv
 initenv(sys.argv)
 global_force_cpu = os.environ.get("BARK_FORCE_CPU", False)
 if (
-    global_force_cpu == False and
+    global_force_cpu != True and
     torch.cuda.is_available() and
     hasattr(torch.cuda, "amp") and
     hasattr(torch.cuda.amp, "autocast") and
@@ -388,7 +388,7 @@ def generate_text_semantic(
     model=None,
     use_kv_caching=False
 ):
-    use_gpu = not global_force_cpu
+    use_gpu = global_force_cpu != True
     """Generate semantic tokens from text."""
     assert isinstance(text, str)
     text = _normalize_whitespace(text)
