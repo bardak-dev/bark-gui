@@ -152,7 +152,7 @@ def _get_ckpt_path(model_type, use_small=False):
     return os.path.join(CACHE_DIR, f"{model_name}.pt")
 
 
-def _grab_best_device(use_gpu=True):
+def grab_best_device(use_gpu=True):
     if torch.cuda.device_count() > 0 and use_gpu:
         device = "cuda"
     elif torch.backends.mps.is_available() and use_gpu and GLOBAL_ENABLE_MPS:
@@ -241,11 +241,11 @@ def _load_model(ckpt_path, device, use_small=False, model_type="text"):
         raise NotImplementedError()
 
     # Force-remove Models to allow running on >12Gb GPU
-    #clean_models();
-    global models
-    models.clear()
-    gc.collect()
-    torch.cuda.empty_cache()
+    # CF: Probably not needed anymore
+    #global models
+    #models.clear()
+    #gc.collect()
+    #torch.cuda.empty_cache()
     # to here...
 
     model_key = f"{model_type}_small" if use_small or USE_SMALL_MODELS else model_type
@@ -314,7 +314,7 @@ def load_model(use_gpu=True, use_small=False, force_reload=False, model_type="te
         raise NotImplementedError()
     global models
     global models_devices
-    device = _grab_best_device(use_gpu=use_gpu)
+    device = grab_best_device(use_gpu=use_gpu)
     model_key = f"{model_type}"
     if OFFLOAD_CPU:
         models_devices[model_key] = device
@@ -334,7 +334,7 @@ def load_model(use_gpu=True, use_small=False, force_reload=False, model_type="te
 def load_codec_model(use_gpu=True, force_reload=False):
     global models
     global models_devices
-    device = _grab_best_device(use_gpu=use_gpu)
+    device = grab_best_device(use_gpu=use_gpu)
     if device == "mps":
         # encodec doesn't support mps
         device = "cpu"
@@ -358,10 +358,10 @@ def preload_models(
     fine_use_gpu=True,
     fine_use_small=False,
     codec_use_gpu=True,
-    force_reload=False,
+    force_reload=False
 ):
     """Load all the necessary models for the pipeline."""
-    if _grab_best_device() == "cpu" and (
+    if grab_best_device() == "cpu" and (
         text_use_gpu or coarse_use_gpu or fine_use_gpu or codec_use_gpu
     ):
         logger.warning("No GPU being used. Careful, inference might be very slow!")
@@ -415,7 +415,6 @@ def generate_text_semantic(
     allow_early_stop=True,
     use_kv_caching=False,
 ):
-    use_gpu = global_force_cpu != True
     """Generate semantic tokens from text."""
     assert isinstance(text, str)
     text = _normalize_whitespace(text)

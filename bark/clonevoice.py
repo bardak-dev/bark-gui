@@ -1,4 +1,4 @@
-from bark.generation import load_codec_model, generate_text_semantic
+from bark.generation import load_codec_model, generate_text_semantic, grab_best_device
 from encodec.utils import convert_audio
 import torchaudio
 import torch
@@ -10,11 +10,7 @@ def clone_voice(audio_filepath, text, dest_filename):
     model = load_codec_model(use_gpu=use_gpu)
 
     # Load and pre-process the audio waveform
-    device = None
-    if use_gpu:
-        device = 'cuda' # or 'cpu'
-    else:
-        device = 'cpu'
+    device = grab_best_device(use_gpu)
     wav, sr = torchaudio.load(audio_filepath)
     wav = convert_audio(wav, sr, model.sample_rate, model.channels)
     wav = wav.unsqueeze(0).to(device)

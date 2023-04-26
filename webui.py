@@ -92,15 +92,14 @@ def split_and_recombine_text(text, desired_length=100, max_length=150):
     return rv
 
 def generate_with_settings(text_prompt, semantic_temp=0.7, semantic_top_k=50, semantic_top_p=0.95, coarse_temp=0.7, coarse_top_k=50, coarse_top_p=0.95, fine_temp=0.5, voice_name=None, use_semantic_history_prompt=True, use_coarse_history_prompt=True, use_fine_history_prompt=True, output_full=False):
-    use_gpu = not os.environ.get("BARK_FORCE_CPU", False)
+
     # generation with more control
     x_semantic = generate_text_semantic(
         text_prompt,
         history_prompt=voice_name if use_semantic_history_prompt else None,
         temp=semantic_temp,
         top_k=semantic_top_k,
-        top_p=semantic_top_p,
-        use_gpu=use_gpu
+        top_p=semantic_top_p
     )
 
     x_coarse_gen = generate_coarse(
@@ -108,14 +107,12 @@ def generate_with_settings(text_prompt, semantic_temp=0.7, semantic_top_k=50, se
         history_prompt=voice_name if use_coarse_history_prompt else None,
         temp=coarse_temp,
         top_k=coarse_top_k,
-        top_p=coarse_top_p,
-        use_gpu=use_gpu
+        top_p=coarse_top_p
     )
     x_fine_gen = generate_fine(
         x_coarse_gen,
         history_prompt=voice_name if use_fine_history_prompt else None,
-        temp=fine_temp,
-        use_gpu=use_gpu
+        temp=fine_temp
     )
 
     if output_full:
@@ -124,7 +121,7 @@ def generate_with_settings(text_prompt, semantic_temp=0.7, semantic_top_k=50, se
             'coarse_prompt': x_coarse_gen,
             'fine_prompt': x_fine_gen
         }
-        return full_generation, codec_decode(x_fine_gen, use_gpu=use_gpu)
+        return full_generation, codec_decode(x_fine_gen)
     return codec_decode(x_fine_gen)
 
 def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, quick_generation, complete_settings):
@@ -159,12 +156,12 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, qu
     all_parts = []
     for i, text in tqdm(enumerate(texts), total=len(texts)):
         if quick_generation == True:
-            print(f"Generating Text ({i+1}/{len(texts)}) -> `{text}`")
+            print(f"\nGenerating Text ({i+1}/{len(texts)}) -> `{text}`")
             audio_array = generate_audio(text, selected_speaker, text_temp, waveform_temp)
             i+=1
 
         else:
-            print(f"Generating Text ({i+1}/{len(texts)}) -> `{text}`")
+            print(f"\nGenerating Text ({i+1}/{len(texts)}) -> `{text}`")
             full_generation, audio_array = generate_with_settings(
                 text,
                 semantic_temp=semantic_temp,
@@ -178,7 +175,7 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, qu
                 use_semantic_history_prompt=use_semantic_history_prompt,
                 use_coarse_history_prompt=use_coarse_history_prompt,
                 use_fine_history_prompt=use_fine_history_prompt,
-                output_full=True
+                output_full=True,
             )
             i+=1
 
