@@ -1,4 +1,4 @@
-﻿from cProfile import label
+from cProfile import label
 import gradio as gr
 import os
 import re
