@@ -35,6 +35,7 @@ We know NOW that in the early years of the twentieth century, this world was bei
 - (optional) Install CUDA for much faster generation 
 
 
+
 ### Usage
 
 - Linux `python webui.py (optional arguments)`
@@ -45,6 +46,8 @@ We know NOW that in the early years of the twentieth century, this world was bei
 - -autolaunch Automatically open Browser with Bark-Tab
 - -smallmodels Use small models, for GPUs with less than 10Gb Vram or to speed up process
 - -forcecpu Force processing on CPU, if your GPU isn't up to the task
+- -enablemps Support for Apple MPS
+- -offloadcpu Offload models to CPU
 
 On Windows edit the StartBark.bat to your likings.
 
@@ -52,8 +55,10 @@ On Windows edit the StartBark.bat to your likings.
 
 Input any text to let Bark create a Speech, use the Dropbox to choose any voice from
 the prompts folder (also custom ones). Choose 'None' for undefined (usefull for MAN:/WOMAN: prompts).
-The 'quick generation' checkbox creates audio a lot faster but might be more unstable and perhaps not that subtle
+The `Quick Generation` checkbox creates audio a lot faster but might be more unstable and perhaps not that subtle
 as this doesn't use finetuning parameters.
+Checking `Use last generation as history` saves voices of each audio chunk to the outputs folder. If you want
+to use them for output, just copy them into the assets/prompts folder.
 Contrary to the original Bark, you can input any text length. The result will be created in chunks
 and merged into 1 audio-file at the end. This can be played from the UI and the WAV-File is saved
 into the Outputs folder.

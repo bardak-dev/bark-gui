@@ -1,4 +1,5 @@
 from cProfile import label
+from distutils.command.check import check
 import gradio as gr
 import os
 import re
@@ -15,6 +16,7 @@ from datetime import datetime
 from time import time
 from tqdm.auto import tqdm
 
+OUTPUTFOLDER = "Outputs"
 
 # Most of the chunked generation ripped from https://github.com/serp-ai/bark-with-voice-clone
 def split_and_recombine_text(text, desired_length=100, max_length=150):
@@ -124,9 +126,9 @@ def generate_with_settings(text_prompt, semantic_temp=0.7, semantic_top_k=50, se
         return full_generation, codec_decode(x_fine_gen)
     return codec_decode(x_fine_gen)
 
-def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, quick_generation, complete_settings):
+def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, quick_generation, complete_settings, progress=gr.Progress(track_tqdm=True)):
     if text == None or len(text) < 1:
-        return
+        raise gr.Error('No text entered!')
 
     # Chunk the text into smaller pieces then combine the generated audio
 
@@ -150,7 +152,7 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, qu
     use_coarse_history_prompt = "Use coarse history" in complete_settings
     use_fine_history_prompt = "Use fine history" in complete_settings
     use_last_generation_as_history = "Use last generation as history" in complete_settings
-
+    progress(0, desc="Generating")
     texts = split_and_recombine_text(text)
 
     all_parts = []
@@ -180,42 +182,59 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, qu
             i+=1
 
         if len(texts) > 1:
-            save_wav(audio_array, "audio")
+            save_wav(audio_array, create_filename(OUTPUTFOLDER, "audioclip",".wav"))
 
         if quick_generation == False & use_last_generation_as_history:
             # save to npz
-            os.makedirs('_temp', exist_ok=True)
-            np.savez_compressed(
-                '_temp/history.npz',
-                semantic_prompt=full_generation['semantic_prompt'],
-                coarse_prompt=full_generation['coarse_prompt'],
-                fine_prompt=full_generation['fine_prompt'],
-            )
-            voice_name = '_temp/history.npz'
+            voice_name = create_filename(OUTPUTFOLDER, "audioclip", "")
+            save_voice(voice_name,
+                      full_generation['semantic_prompt'],
+                      full_generation['coarse_prompt'],
+                      full_generation['fine_prompt'])
+            # loading voice from custom folder needs to have extension
+            voice_name = voice_name + ".npz"
         all_parts.append(audio_array)
 
     audio_array = np.concatenate(all_parts, axis=-1)
 
     # save & play audio
-    return save_wav(audio_array, "final")
+    result = create_filename(OUTPUTFOLDER, "final",".wav")
+    save_wav(audio_array, result)
+    return result
 
-def save_wav(audio_array, name):
+def create_filename(path, name, extension):
     now = datetime.now()
     date_str = now.strftime("%m-%d-%Y")
-    time_str = now.strftime("%H-%M-%S")
-
-    outputs_folder = os.path.join(os.getcwd(), "outputs")
+    outputs_folder = os.path.join(os.getcwd(), path)
     if not os.path.exists(outputs_folder):
         os.makedirs(outputs_folder)
 
     sub_folder = os.path.join(outputs_folder, date_str)
     if not os.path.exists(sub_folder):
         os.makedirs(sub_folder)
+    now = datetime.now()
+    time_str = now.strftime("%H-%M-%S")
+    file_name = f"{name}_{time_str}{extension}"
+    return os.path.join(sub_folder, file_name)
 
-    file_name = f"{name}_{time_str}.wav"
-    temp_path = os.path.join(sub_folder, file_name)
-    write_wav(temp_path, SAMPLE_RATE, audio_array)
-    return temp_path
+
+def save_wav(audio_array, filename):
+    write_wav(filename, SAMPLE_RATE, audio_array)
+
+def save_voice(filename, semantic_prompt, coarse_prompt, fine_prompt):
+    np.savez_compressed(
+        filename,
+        semantic_prompt=semantic_prompt,
+        coarse_prompt=coarse_prompt,
+        fine_prompt=fine_prompt
+    )
+    
+
+def on_quick_gen_changed(checkbox):
+    if checkbox == False:
+        return gr.CheckboxGroup.update(visible=True)
+    return gr.CheckboxGroup.update(visible=False)
+
 
 
 logger = logging.getLogger(__name__)
@@ -231,6 +250,8 @@ if torch.cuda.is_available() == False:
     logger.warning("No CUDA detected, fallback to CPU!")
 
 print(f'smallmodels={os.environ.get("SUNO_USE_SMALL_MODELS", False)}')
+print(f'enablemps={os.environ.get("SUNO_ENABLE_MPS", False)}')
+print(f'offloadcpu={os.environ.get("SUNO_OFFLOAD_CPU", False)}')
 print(f'forcecpu={os.environ.get("BARK_FORCE_CPU", False)}')
 print(f'autolaunch={autolaunch}\n')
 
@@ -263,7 +284,9 @@ with gr.Blocks(title="Bark Enhanced Gradio GUI", mode="Bark Enhanced") as barkgu
 
         quick_gen_checkbox = gr.Checkbox(label="Quick Generation", value=True)
         settings_checkboxes = ["Use semantic history", "Use coarse history", "Use fine history", "Use last generation as history"]
-        complete_settings = gr.CheckboxGroup(choices=settings_checkboxes, value=settings_checkboxes, label="Generation Settings", type="value")
+        complete_settings = gr.CheckboxGroup(choices=settings_checkboxes, value=settings_checkboxes, label="Generation Settings", type="value", interactive=True, visible=False)
+        quick_gen_checkbox.change(fn=on_quick_gen_changed, inputs=quick_gen_checkbox, outputs=complete_settings)
+
         output_audio = gr.Audio(label="Generated Audio", type="filepath")
         tts_create_button = gr.Button("Create")
     with gr.Tab("Clone Voice"):
@@ -273,8 +296,9 @@ with gr.Blocks(title="Bark Enhanced Gradio GUI", mode="Bark Enhanced") as barkgu
         #inputAudioFilename = gr.Textbox(label="Filename of Input Audio", lines=1, placeholder="audio.wav")
         output_voice = gr.Textbox(label="Filename of trained Voice", lines=1, placeholder=initialname, value=initialname)
         clone_voice_button = gr.Button("Create Voice")
-    
-        tts_create_button.click(generate_text_to_speech, inputs=[input_text, speaker, text_temp, waveform_temp, quick_gen_checkbox, complete_settings],outputs=output_audio)
-        clone_voice_button.click(clone_voice, inputs=[input_audio_filename, transcription_text, output_voice])
+        dummy = gr.Text(label="Progress")
 
-barkgui.launch(inbrowser=autolaunch)
+        tts_create_button.click(generate_text_to_speech, inputs=[input_text, speaker, text_temp, waveform_temp, quick_gen_checkbox, complete_settings],outputs=output_audio)
+        clone_voice_button.click(clone_voice, inputs=[input_audio_filename, transcription_text, output_voice], outputs=dummy)
+
+barkgui.queue().launch(inbrowser=autolaunch)
