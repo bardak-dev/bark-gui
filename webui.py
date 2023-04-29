@@ -258,10 +258,12 @@ print(f'autolaunch={autolaunch}\n')
 
 
 # Collect all existing speakers/voices in dir
-speakers_list = ['None']
+speakers_list = []
 for file in os.listdir("./bark/assets/prompts"): 
     if file.endswith(".npz"):
         speakers_list.append(file[:-4])
+speakers_list.sort()
+speakers_list.insert(0, 'None')
 
 # Create Gradio Blocks
 
