@@ -1,5 +1,6 @@
 from cProfile import label
 from distutils.command.check import check
+from doctest import Example
 import gradio as gr
 import os
 import re
@@ -268,10 +269,18 @@ for file in os.listdir("./bark/assets/prompts"):
 with gr.Blocks(title="Bark Enhanced Gradio GUI", mode="Bark Enhanced") as barkgui:
     gr.Markdown("### [Bark Enhanced](https://github.com/C0untFloyd/bark-gui)")
     with gr.Tab("TTS"):
-        placeholder = """Enter text here. Special meanings: [laughter] [laughs] [sighs] [music] [gasps] [clears throat]
-— or ... for hesitations
-♪ for song lyrics"""
+        placeholder = "Enter text here."
         input_text = gr.Textbox(label="Input Text", lines=4, placeholder=placeholder)
+        examples = [
+            "Special meanings: [laughter] [laughs] [sighs] [music] [gasps] [clears throat] MAN: WOMAN:",
+           "♪ Never gonna make you cry, never gonna say goodbye, never gonna tell a lie and hurt you ♪",
+           "And now — a picture of a larch [laughter]",
+           """
+                WOMAN: I would like an oatmilk latte please.
+                MAN: Wow, that's expensive!
+           """
+           ]
+        examples = gr.Examples(examples=examples, inputs=input_text)
         speaker = gr.Dropdown(speakers_list, value=speakers_list[0], label="Voice")
         text_temp = gr.Slider(
             0.1,
