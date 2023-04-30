@@ -13,3 +13,4 @@ __pycache__/
 /docs/harald_24000.wav
 /docs/harald.wav
 /models
+/bark/assets/prompts/MeMyselfAndI.npz
