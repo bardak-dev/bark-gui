@@ -4,7 +4,7 @@
 
 
 A Gradio Web UI for an extended - easy to use - Bark Version, focused on Windows running locally.
-Based on [Bark](
+Based on [Bark](https://github.com/suno-ai/bark)
 
 It now has several extra features, which might make this usable for simple people
 like me, who just want to experiment with Bark.
