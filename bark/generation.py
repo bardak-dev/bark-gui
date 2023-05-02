@@ -375,11 +375,13 @@ def _load_history_prompt(history_prompt_input):
     if isinstance(history_prompt_input, str) and history_prompt_input.endswith(".npz"):
         history_prompt = np.load(history_prompt_input)
     elif isinstance(history_prompt_input, str):
+        # make sure this works on non-ubuntu
+        history_prompt_input = os.path.join(*history_prompt_input.split("/"))
 #        if history_prompt_input not in ALLOWED_PROMPTS:
 #            raise ValueError("history prompt not found")
-        promptfilename = os.path.join(CUR_PATH, "assets", "prompts")
-        promptfilename = promptfilename + f"{history_prompt_input}.npz"
-        history_prompt = np.load(promptfilename)
+        history_prompt = np.load(
+            os.path.join(CUR_PATH, "assets", "prompts", f"{history_prompt_input}.npz")
+        )
     elif isinstance(history_prompt_input, dict):
         assert("semantic_prompt" in history_prompt_input)
         assert("coarse_prompt" in history_prompt_input)

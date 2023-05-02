@@ -234,6 +234,8 @@ for root, dirs, files in os.walk("./bark/assets/prompts"):
 	for file in files:
 		if(file.endswith(".npz")):
 			pathpart = root.replace("./bark/assets/prompts", "")
+			if len(pathpart) < 1:
+				pathpart = "/"
 			speakers_list.append(os.path.join(pathpart, file[:-4]))
 
 speakers_list = sorted(speakers_list, key=lambda x: x.lower())
