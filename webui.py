@@ -269,7 +269,7 @@ if server_port <= 0:
 with gr.Blocks(title="Bark Enhanced Gradio GUI", mode="Bark Enhanced", theme=settings.selected_theme) as barkgui:
     with gr.Row():
         with gr.Column():
-            gr.Markdown("### [Bark Enhanced v0.4.0](https://github.com/C0untFloyd/bark-gui)")
+            gr.Markdown("### [Bark Enhanced v0.4.5](https://github.com/C0untFloyd/bark-gui)")
         with gr.Column():
             gr.HTML(create_version_html(), elem_id="versions")
 
