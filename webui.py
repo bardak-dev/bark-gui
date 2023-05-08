@@ -81,7 +81,7 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eo
 
             all_parts += [audio_array]
     else:
-        texts = split_and_recombine_text(text, settings.input_text_desired_length, settings.input_max_length)
+        texts = split_and_recombine_text(text, settings.input_text_desired_length, settings.input_text_max_length)
         for i, text in tqdm(enumerate(texts), total=len(texts)):
             print(f"\nGenerating Text ({i+1}/{len(texts)}) -> {selected_speaker} (Seed {seed}):`{text}`")
             complete_text += text
@@ -104,7 +104,7 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eo
                 save_wav(audio_array, filename)
                 add_id3_tag(filename, text, selected_speaker, seed)
 
-            if quick_generation == False and save_last_generation == True or use_last_generation_as_history == True:
+            if quick_generation == False and (save_last_generation == True or use_last_generation_as_history == True):
                 # save to npz
                 voice_name = create_filename(OUTPUTFOLDER, seed, "audioclip", ".npz")
                 save_as_prompt(voice_name, full_generation)
