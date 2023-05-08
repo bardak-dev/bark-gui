@@ -18,7 +18,9 @@ like me, who just want to experiment with Bark.
 - Creation of new Voices possible (so far very bad results, hopefully improving in the future)
 - Easy Selection of Small/Big Models, additional commandline arguments
 - Works with 8Gb GPU or force it to use your CPU instead
-- Can input SSML to allow fixed voice dialogues (preliminary so far) 
+- Can input SSML to allow fixed voice dialogues (preliminary so far)
+- Generation Metadata added as ID3 Tag to WAV
+- Specify initial Seed and logging for more stability and easier reproduction of results 
 
 ### Example Input:
 
@@ -158,6 +160,16 @@ I'm doing this basically for myself but I'm glad if you enjoy my experiments too
 
 
 ### Changelog
+**08.05.2023** Release v0.4.5
+
+- BUGFIX: Blank Voice Lines when splitting for SSML
+- Added Settings Tab
+- Added Theming Support
+- Added initial Generation Seeds for reproducing results
+- ID3 Tag with generation infos written to WAV
+- Streamlined prompt settings, removed checkboxes for history prompts and added slider for min_eos_p
+  
+
 
 **03.05.2023** First Release v0.4.0
 
