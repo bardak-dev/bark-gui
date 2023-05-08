@@ -11,7 +11,7 @@ import pytorch_seed
 
 from xml.sax import saxutils
 from bark.api import generate_with_settings
-from build.lib.bark.api import save_as_prompt
+from bark.api import save_as_prompt
 from settings import Settings
 #import nltk
 
