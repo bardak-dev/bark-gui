@@ -94,9 +94,13 @@ CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = "./models"
 
 
-USE_SMALL_MODELS = os.environ.get("SUNO_USE_SMALL_MODELS", False)
-GLOBAL_ENABLE_MPS = os.environ.get("SUNO_ENABLE_MPS", False)
-OFFLOAD_CPU = os.environ.get("SUNO_OFFLOAD_CPU", False)
+def _cast_bool_env_var(s):
+    return s.lower() in ('true', '1', 't')
+
+
+USE_SMALL_MODELS = _cast_bool_env_var(os.environ.get("SUNO_USE_SMALL_MODELS", "False"))
+GLOBAL_ENABLE_MPS = _cast_bool_env_var(os.environ.get("SUNO_ENABLE_MPS", "False"))
+OFFLOAD_CPU = _cast_bool_env_var(os.environ.get("SUNO_OFFLOAD_CPU", "False"))
 
 
 REMOTE_MODEL_PATHS = {
@@ -146,7 +150,7 @@ def grab_best_device(use_gpu=True):
 
 def _get_ckpt_path(model_type, use_small=False):
     key = model_type
-    if use_small:
+    if use_small or USE_SMALL_MODELS:
         key += "_small"
     return os.path.join(CACHE_DIR, REMOTE_MODEL_PATHS[key]["file_name"])
 
