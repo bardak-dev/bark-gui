@@ -4,7 +4,7 @@ from xml.sax import saxutils
 #import nltk
 
 # Chunked generation originally from https://github.com/serp-ai/bark-with-voice-clone
-def split_and_recombine_text(text, desired_length=150, max_length=200):
+def split_and_recombine_text(text, desired_length=100, max_length=150):
     # return nltk.sent_tokenize(text)
 
     # from https://github.com/neonbjb/tortoise-tts
@@ -55,14 +55,14 @@ def split_and_recombine_text(text, desired_length=150, max_length=200):
                 seek(-d)
             else:
                 # no full sentences, seek back until we are not in the middle of a word and split there
-                while c not in "!?.\n " and pos > 0 and len(current) > desired_length:
+                while c not in "!?.,\n " and pos > 0 and len(current) > desired_length:
                     c = seek(-1)
             commit()
         # check for sentence boundaries
-        elif not in_quote and (c in "!?\n" or (c == "." and peek(1) in "\n ")):
+        elif not in_quote and (c in "!?]\n" or (c == "." and peek(1) in "\n ")):
             # seek forward if we have consecutive boundary markers but still within the max length
             while (
-                pos < len(text) - 1 and len(current) < max_length and peek(1) in "!?."
+                pos < len(text) - 1 and len(current) < max_length and peek(1) in "!?.]"
             ):
                 c = seek(1)
             split_pos.append(pos)
@@ -91,6 +91,9 @@ def build_ssml(rawtext, selected_voice):
     texts = rawtext.split("\n")
     joinedparts = ""
     for textpart in texts:
+        textpart = textpart.strip()
+        if len(textpart) < 1:
+            continue
         joinedparts = joinedparts + f"\n<voice name=\"{selected_voice}\">{saxutils.escape(textpart)}</voice>"
     ssml = f"""<?xml version="1.0"?>
 <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis"
@@ -119,8 +122,8 @@ def create_clips_from_ssml(ssmlinput):
         if(len(voice_content) > 0):
             parts = split_and_recombine_text(voice_content)
             for p in parts:
-                # add to tuple list
-                voice_list.append((voice_name, p))
-
+                if(len(p) > 1):
+                    # add to tuple list
+                    voice_list.append((voice_name, p))
     return voice_list
 

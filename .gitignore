@@ -14,3 +14,7 @@ __pycache__/
 /docs/harald.wav
 /models
 /bark/assets/prompts/MeMyselfAndI.npz
+/bark_ui_enhanced.egg-info
+/bark/assets/prompts/custom/harald.npz
+/bark/assets/prompts/custom/audioclip_13-56-22_s1726810697.npz
+/build/lib/bark
