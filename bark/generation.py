@@ -15,7 +15,7 @@ import torch
 import torch.nn.functional as F
 import tqdm
 from transformers import BertTokenizer
-from huggingface_hub import hf_hub_download
+from huggingface_hub import hf_hub_download, hf_hub_url
 
 from .model import GPTConfig, GPT
 from .model_fine import FineGPT, FineGPTConfig
@@ -97,11 +97,9 @@ CACHE_DIR = "./models"
 def _cast_bool_env_var(s):
     return s.lower() in ('true', '1', 't')
 
-
 USE_SMALL_MODELS = _cast_bool_env_var(os.environ.get("SUNO_USE_SMALL_MODELS", "False"))
 GLOBAL_ENABLE_MPS = _cast_bool_env_var(os.environ.get("SUNO_ENABLE_MPS", "False"))
 OFFLOAD_CPU = _cast_bool_env_var(os.environ.get("SUNO_OFFLOAD_CPU", "False"))
-
 
 REMOTE_MODEL_PATHS = {
     "text_small": {
@@ -154,7 +152,7 @@ def _get_ckpt_path(model_type, use_small=False):
         key += "_small"
     return os.path.join(CACHE_DIR, REMOTE_MODEL_PATHS[key]["file_name"])
 
-
+"""
 def _download(from_hf_path, file_name, destfilename):
     os.makedirs(CACHE_DIR, exist_ok=True)
     hf_hub_download(repo_id=from_hf_path, filename=file_name, local_dir=CACHE_DIR, local_dir_use_symlinks=False)
@@ -162,6 +160,10 @@ def _download(from_hf_path, file_name, destfilename):
     if not os.path.exists(destfilename):
         localname = os.path.join(CACHE_DIR, file_name)
         os.rename(localname, destfilename)
+"""
+def _download(from_hf_path, file_name):
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    hf_hub_download(repo_id=from_hf_path, filename=file_name, local_dir=CACHE_DIR)
 
 
 class InferenceContext:
@@ -230,7 +232,12 @@ def _load_model(ckpt_path, device, use_small=False, model_type="text"):
     model_info = REMOTE_MODEL_PATHS[model_key]
     if not os.path.exists(ckpt_path):
         logger.info(f"{model_type} model not found, downloading into `{CACHE_DIR}`.")
-        _download(model_info["repo_id"], model_info["file_name"], ckpt_path)
+        ## added next two lines to make it super clear which model is being downloaded
+        remote_filename = hf_hub_url(model_info["repo_id"], model_info["file_name"])
+        print(f"Downloading {model_key} {model_info['repo_id']} remote model file {remote_filename} {model_info['file_name']} to {CACHE_DIR}")
+        _download(model_info["repo_id"], model_info["file_name"])
+        # add next line to make it super clear which model is being loaded
+    print(f"Loading {model_key} model from {ckpt_path} to {device}") # added
     checkpoint = torch.load(ckpt_path, map_location=device)
     # this is a hack
     model_args = checkpoint["model_args"]
