@@ -20,7 +20,8 @@ like me, who just want to experiment with Bark.
 - Works with 8Gb GPU or force it to use your CPU instead
 - Can input SSML to allow fixed voice dialogues (preliminary so far)
 - Generation Metadata added as ID3 Tag to WAV
-- Specify initial Seed and logging for more stability and easier reproduction of results 
+- Specify initial Seed and logging for more stability and easier reproduction of results
+- Gradio Theme Support 
 
 ### Example Input:
 
