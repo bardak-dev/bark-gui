@@ -8,6 +8,7 @@ import numpy as np
 import logging
 import torch
 import pytorch_seed
+import time
 
 from xml.sax import saxutils
 from bark.api import generate_with_settings
@@ -15,9 +16,9 @@ from bark.api import save_as_prompt
 from settings import Settings
 #import nltk
 
-from bark import SAMPLE_RATE, generate_audio
+from bark import SAMPLE_RATE
 from bark.clonevoice import clone_voice
-from bark.generation import SAMPLE_RATE, preload_models, codec_decode, generate_coarse, generate_fine, generate_text_semantic
+from bark.generation import SAMPLE_RATE, preload_models
 from scipy.io.wavfile import write as write_wav
 from parseinput import split_and_recombine_text, build_ssml, is_ssml, create_clips_from_ssml
 from datetime import datetime
@@ -190,10 +191,9 @@ def apply_settings(themes, input_server_name, input_server_port, input_server_pu
     settings.silence_speaker = input_silence_speaker
     settings.save()
 
-def apply_restart(themes, input_server_name, input_server_port, input_silence_break, input_silence_speaker):
-    apply_settings(themes, input_server_name, input_server_port, input_silence_break, input_silence_speaker)
-    barkgui.close()
-
+def restart():
+    global restart_server
+    restart_server = True
 
 
 def create_version_html():
@@ -210,6 +210,8 @@ gradio: {gr.__version__}
     
 
 logger = logging.getLogger(__name__)
+APPTITLE = "Bark UI Enhanced v0.4.6"
+
 
 autolaunch = False
 
@@ -259,118 +261,132 @@ if len(server_name) < 1:
 server_port = settings.server_port
 if server_port <= 0:
     server_port = None
+global run_server
+global restart_server
 
+run_server = True
 
+while run_server:
+    print(f'Launching {APPTITLE} Server')
 
+    # Create Gradio Blocks
 
-
-# Create Gradio Blocks
-
-with gr.Blocks(title="Bark Enhanced Gradio GUI", mode="Bark Enhanced", theme=settings.selected_theme) as barkgui:
-    with gr.Row():
-        with gr.Column():
-            gr.Markdown("### [Bark Enhanced v0.4.5](https://github.com/C0untFloyd/bark-gui)")
-        with gr.Column():
-            gr.HTML(create_version_html(), elem_id="versions")
-
-    with gr.Tab("TTS"):
+    with gr.Blocks(title=f"{APPTITLE}", mode=f"{APPTITLE}", theme=settings.selected_theme) as barkgui:
         with gr.Row():
             with gr.Column():
-                placeholder = "Enter text here."
-                input_text = gr.Textbox(label="Input Text", lines=4, placeholder=placeholder)
+                gr.Markdown(f"### [{APPTITLE}](https://github.com/C0untFloyd/bark-gui)")
             with gr.Column():
-                seedcomponent = gr.Number(label="Seed (default -1 = Random)", precision=0, value=-1)
-                convert_to_ssml_button = gr.Button("Convert Text to SSML")
-        with gr.Row():
-            with gr.Column():
-                examples = [
-                    "Special meanings: [laughter] [laughs] [sighs] [music] [gasps] [clears throat] MAN: WOMAN:",
-                   "♪ Never gonna make you cry, never gonna say goodbye, never gonna tell a lie and hurt you ♪",
-                   "And now — a picture of a larch [laughter]",
-                   """
-                        WOMAN: I would like an oatmilk latte please.
-                        MAN: Wow, that's expensive!
-                   """,
-                   """<?xml version="1.0"?>
-<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://www.w3.org/2001/10/synthesis
-                   http://www.w3.org/TR/speech-synthesis/synthesis.xsd"
-         xml:lang="en-US">
-<voice name="/v2/en_speaker_9">Look at that drunk guy!</voice>
-<voice name="/v2/en_speaker_3">Who is he?</voice>
-<voice name="/v2/en_speaker_9">WOMAN: [clears throat] 10 years ago, he proposed me and I rejected him.</voice>
-<voice name="/v2/en_speaker_3">Oh my God [laughs] he is still celebrating</voice>
-</speak>"""
-                   ]
-                examples = gr.Examples(examples=examples, inputs=input_text)
+                gr.HTML(create_version_html(), elem_id="versions")
 
-        with gr.Row():
-            with gr.Column():
-                gr.Markdown("[Voice Prompt Library](https://suno-ai.notion.site/8b8e8749ed514b0cbf3f699013548683?v=bc67cff786b04b50b3ceb756fd05f68c)")
-                speaker = gr.Dropdown(speakers_list, value=speakers_list[0], label="Voice")
-            with gr.Column():
-                text_temp = gr.Slider(0.1, 1.0, value=0.6, label="Generation Temperature", info="1.0 more diverse, 0.1 more conservative")
-                waveform_temp = gr.Slider(0.1, 1.0, value=0.7, label="Waveform temperature", info="1.0 more diverse, 0.1 more conservative")
+        with gr.Tab("TTS"):
+            with gr.Row():
+                with gr.Column():
+                    placeholder = "Enter text here."
+                    input_text = gr.Textbox(label="Input Text", lines=4, placeholder=placeholder)
+                with gr.Column():
+                    seedcomponent = gr.Number(label="Seed (default -1 = Random)", precision=0, value=-1)
+                    convert_to_ssml_button = gr.Button("Convert Text to SSML")
+            with gr.Row():
+                with gr.Column():
+                    examples = [
+                        "Special meanings: [laughter] [laughs] [sighs] [music] [gasps] [clears throat] MAN: WOMAN:",
+                       "♪ Never gonna make you cry, never gonna say goodbye, never gonna tell a lie and hurt you ♪",
+                       "And now — a picture of a larch [laughter]",
+                       """
+                            WOMAN: I would like an oatmilk latte please.
+                            MAN: Wow, that's expensive!
+                       """,
+                       """<?xml version="1.0"?>
+    <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://www.w3.org/2001/10/synthesis
+                       http://www.w3.org/TR/speech-synthesis/synthesis.xsd"
+             xml:lang="en-US">
+    <voice name="/v2/en_speaker_9">Look at that drunk guy!</voice>
+    <voice name="/v2/en_speaker_3">Who is he?</voice>
+    <voice name="/v2/en_speaker_9">WOMAN: [clears throat] 10 years ago, he proposed me and I rejected him.</voice>
+    <voice name="/v2/en_speaker_3">Oh my God [laughs] he is still celebrating</voice>
+    </speak>"""
+                       ]
+                    examples = gr.Examples(examples=examples, inputs=input_text)
 
-        with gr.Row():
-            with gr.Column():
-                quick_gen_checkbox = gr.Checkbox(label="Quick Generation", value=True)
-                settings_checkboxes = ["Use last generation as history", "Save generation as Voice"]
-                complete_settings = gr.CheckboxGroup(choices=settings_checkboxes, value=settings_checkboxes, label="Detailed Generation Settings", type="value", interactive=True, visible=False)
-            with gr.Column():
-                eos_prob = gr.Slider(0.0, 0.5, value=0.05, label="End of sentence probability")
+            with gr.Row():
+                with gr.Column():
+                    gr.Markdown("[Voice Prompt Library](https://suno-ai.notion.site/8b8e8749ed514b0cbf3f699013548683?v=bc67cff786b04b50b3ceb756fd05f68c)")
+                    speaker = gr.Dropdown(speakers_list, value=speakers_list[0], label="Voice")
+                with gr.Column():
+                    text_temp = gr.Slider(0.1, 1.0, value=0.6, label="Generation Temperature", info="1.0 more diverse, 0.1 more conservative")
+                    waveform_temp = gr.Slider(0.1, 1.0, value=0.7, label="Waveform temperature", info="1.0 more diverse, 0.1 more conservative")
 
-        with gr.Row():
-            with gr.Column():
-                tts_create_button = gr.Button("Generate")
-            with gr.Column():
-                hidden_checkbox = gr.Checkbox(visible=False)
+            with gr.Row():
+                with gr.Column():
+                    quick_gen_checkbox = gr.Checkbox(label="Quick Generation", value=True)
+                    settings_checkboxes = ["Use last generation as history", "Save generation as Voice"]
+                    complete_settings = gr.CheckboxGroup(choices=settings_checkboxes, value=settings_checkboxes, label="Detailed Generation Settings", type="value", interactive=True, visible=False)
+                with gr.Column():
+                    eos_prob = gr.Slider(0.0, 0.5, value=0.05, label="End of sentence probability")
+
+            with gr.Row():
+                with gr.Column():
+                    tts_create_button = gr.Button("Generate")
+                with gr.Column():
+                    hidden_checkbox = gr.Checkbox(visible=False)
+                    button_stop_generation = gr.Button("Stop generation")
+            with gr.Row():
+                output_audio = gr.Audio(label="Generated Audio", type="filepath")
+
+        with gr.Tab("Clone Voice"):
+            input_audio_filename = gr.Audio(label="Input audio.wav", source="upload", type="filepath")
+            transcription_text = gr.Textbox(label="Transcription Text", lines=1, placeholder="Enter Text of your Audio Sample here...")
+            initialname = "./bark/assets/prompts/custom/MeMyselfAndI"
+            output_voice = gr.Textbox(label="Filename of trained Voice", lines=1, placeholder=initialname, value=initialname)
+            clone_voice_button = gr.Button("Create Voice")
+            dummy = gr.Text(label="Progress")
+
+        with gr.Tab("Settings"):
+            with gr.Row():
+                themes = gr.Dropdown(available_themes, label="Theme", info="Change needs complete restart", value=settings.selected_theme)
+            with gr.Row():
+                input_server_name = gr.Textbox(label="Server Name", lines=1, info="Leave blank to run locally", value=settings.server_name)
+                input_server_port = gr.Number(label="Server Port", precision=0, info="Leave at 0 to use default", value=settings.server_port)
+                share_checkbox = gr.Checkbox(label="Public Server", value=settings.server_share)
+            with gr.Row():
+                input_desired_len = gr.Slider(100, 150, value=settings.input_text_desired_length, label="Desired Input Text Length", info="Ideal length to split input sentences")
+                input_max_len = gr.Slider(150, 256, value=settings.input_text_max_length, label="Max Input Text Length", info="Maximum Input Text Length")
+            with gr.Row():
+                input_silence_break = gr.Slider(1, 1000, value=settings.silence_sentence, label="Sentence Pause Time (ms)", info="Silence between sentences in milliseconds")
+                input_silence_speakers = gr.Slider(1, 5000, value=settings.silence_speakers, label="Speaker Pause Time (ms)", info="Silence between different speakers in milliseconds")
+
+            with gr.Row():
+                button_apply_settings = gr.Button("Apply Settings")
+                button_apply_restart = gr.Button("Restart Server")
                 button_delete_files = gr.Button("Clear output folder")
-        with gr.Row():
-            output_audio = gr.Audio(label="Generated Audio", type="filepath")
 
-    with gr.Tab("Clone Voice"):
-        input_audio_filename = gr.Audio(label="Input audio.wav", source="upload", type="filepath")
-        transcription_text = gr.Textbox(label="Transcription Text", lines=1, placeholder="Enter Text of your Audio Sample here...")
-        initialname = "./bark/assets/prompts/custom/MeMyselfAndI"
-        output_voice = gr.Textbox(label="Filename of trained Voice", lines=1, placeholder=initialname, value=initialname)
-        clone_voice_button = gr.Button("Create Voice")
-        dummy = gr.Text(label="Progress")
+        quick_gen_checkbox.change(fn=on_quick_gen_changed, inputs=quick_gen_checkbox, outputs=complete_settings)
+        convert_to_ssml_button.click(convert_text_to_ssml, inputs=[input_text, speaker],outputs=input_text)
+        gen_click = tts_create_button.click(generate_text_to_speech, inputs=[input_text, speaker, text_temp, waveform_temp, eos_prob, quick_gen_checkbox, complete_settings, seedcomponent],outputs=output_audio)
+        button_stop_generation.click(fn=None, inputs=None, outputs=None, cancels=[gen_click])
+        # Javascript hack to display modal confirmation dialog
+        js = "(x) => confirm('Are you sure? This will remove all files from output folder')"
+        button_delete_files.click(None, None, hidden_checkbox, _js=js)
+        hidden_checkbox.change(delete_output_files, [hidden_checkbox], [hidden_checkbox])
+        clone_voice_button.click(clone_voice, inputs=[input_audio_filename, transcription_text, output_voice], outputs=dummy)
+        button_apply_settings.click(apply_settings, inputs=[themes, input_server_name, input_server_port, share_checkbox, input_desired_len, input_max_len, input_silence_break, input_silence_speakers])
+        button_apply_restart.click(restart)
+        restart_server = False
+        try:
+            barkgui.queue().launch(inbrowser=autolaunch, server_name=server_name, server_port=server_port, share=settings.server_share, prevent_thread_lock=True)
+        except:
+            restart_server = True
+            run_server = False
+        try:
+            while restart_server == False:
+                time.sleep(1.0)
+        except (KeyboardInterrupt, OSError):
+            print("Keyboard interruption in main thread... closing server.")
+            run_server = False
+        barkgui.close()
 
-    with gr.Tab("Settings"):
-        with gr.Row():
-            themes = gr.Dropdown(available_themes, label="Theme", info="Change needs complete restart", value=settings.selected_theme)
-        with gr.Row():
-            input_server_name = gr.Textbox(label="Server Name", lines=1, info="Leave blank to run locally", value=settings.server_name)
-            input_server_port = gr.Number(label="Server Port", precision=0, info="Leave at 0 to use default", value=settings.server_port)
-            share_checkbox = gr.Checkbox(label="Public Server", value=settings.server_share)
-        with gr.Row():
-            input_desired_len = gr.Slider(100, 150, value=settings.input_text_desired_length, label="Desired Input Text Length", info="Ideal length to split input sentences")
-            input_max_len = gr.Slider(150, 256, value=settings.input_text_max_length, label="Max Input Text Length", info="Maximum Input Text Length")
-        with gr.Row():
-            input_silence_break = gr.Slider(1, 1000, value=settings.silence_sentence, label="Sentence Pause Time (ms)", info="Silence between sentences in milliseconds")
-            input_silence_speakers = gr.Slider(1, 5000, value=settings.silence_speakers, label="Speaker Pause Time (ms)", info="Silence between different speakers in milliseconds")
 
-        with gr.Row():
-            button_apply_settings = gr.Button("Apply Settings")
-#            button_apply_restart = gr.Button("Apply & Restart")
 
-    quick_gen_checkbox.change(fn=on_quick_gen_changed, inputs=quick_gen_checkbox, outputs=complete_settings)
-    convert_to_ssml_button.click(convert_text_to_ssml, inputs=[input_text, speaker],outputs=input_text)
-    tts_create_button.click(generate_text_to_speech, inputs=[input_text, speaker, text_temp, waveform_temp, eos_prob, quick_gen_checkbox, complete_settings, seedcomponent],outputs=output_audio)
-    # Javascript hack to display modal confirmation dialog
-    js = "(x) => confirm('Are you sure? This will remove all files from output folder')"
-    button_delete_files.click(None, None, hidden_checkbox, _js=js)
-    hidden_checkbox.change(delete_output_files, [hidden_checkbox], [hidden_checkbox])
-    clone_voice_button.click(clone_voice, inputs=[input_audio_filename, transcription_text, output_voice], outputs=dummy)
-    button_apply_settings.click(apply_settings, inputs=[themes, input_server_name, input_server_port, share_checkbox, input_desired_len, input_max_len, input_silence_break, input_silence_speakers])
-#    button_apply_restart.click(apply_settings, inputs=[themes, input_server_name, input_server_port, input_silence_break, input_silence_speaker, True])
 
-try:
-    barkgui.queue().launch(inbrowser=autolaunch, server_name=server_name, server_port=server_port, share=settings.server_share)
-except KeyboardInterrupt:
-    barkgui.close()    
-except Exception as e:
-    print(e)
-    barkgui.close()

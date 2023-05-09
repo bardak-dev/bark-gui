@@ -160,6 +160,13 @@ I'm doing this basically for myself but I'm glad if you enjoy my experiments too
 
 
 ### Changelog
+
+**09.05.2023** Release v0.4.6
+
+- Restart Server in Settings
+- Interrupt & Cancel Generation
+- Delete Output Files moved to Settings
+
 **08.05.2023** Release v0.4.5
 
 - BUGFIX: Blank Voice Lines when splitting for SSML
