@@ -28,16 +28,16 @@ def check_env():
 
 
 def install_dependencies():
+    # Install Git and clone repo
+    run_cmd("conda install -y -k git")
+    run_cmd("git clone https://github.com/C0untFloyd/bark-gui.git")
+
     # Select your GPU or, choose to run in CPU mode
     print("Do you have a GPU (Nvidia)?")
     print("Enter Y for Yes")
     print()
     gpuchoice = input("Input> ").lower()
 
-    # Install git, thanks J. Fly :)
-    run_cmd("conda install -y -k git")
-    # Clone webui to our computer
-    run_cmd("git clone https://github.com/C0untFloyd/bark-gui.git")
     if gpuchoice == "y":
         run_cmd("pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118")
 
@@ -53,28 +53,29 @@ def update_dependencies():
     run_cmd("git pull")
     # Installs/Updates dependencies from all requirements.txt
     run_cmd("python -m pip install .")
-    
+ 
 
 def start_app():
     os.chdir("bark-gui")
-    run_cmd('python webui.py -autolaunch')
+    # forward commandline arguments
+    sys.argv.pop(0)
+    args = ' '.join(sys.argv)
+    run_cmd(f'python webui.py {args}')
 
 
 if __name__ == "__main__":
     # Verifies we are in a conda environment
     check_env()
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--update', action='store_true', help='Update the web UI.')
-    args = parser.parse_args()
-
-    if args.update:
-        update_dependencies()
+    # If webui has already been installed, skip and run
+    if not os.path.exists("bark-gui/"):
+        install_dependencies()
     else:
-        # If webui has already been installed, skip and run
-        if not os.path.exists("bark-gui/"):
-            install_dependencies()
-            os.chdir(script_dir)
+        # moved update from batch to here, because of batch limitations
+        updatechoice = input("Check for Updates? [y/n]").lower()
+        if updatechoice == "y":
+           update_dependencies()
 
-        # Run the model with webui
-        start_app()
+    # Run the model with webui
+    os.chdir(script_dir)
+    start_app()

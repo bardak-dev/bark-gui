@@ -34,7 +34,8 @@ We know NOW that in the early years of the twentieth century, this world was bei
 ### Installation
 
 For Windows you can now use the 1-click installer released. This will download and install everything
-in a handy miniconda environment.
+in a handy conda environment. This not only installs the application but also runs it, once installed.
+
 For other OS or if you'd rather like to do this by yourself then:
 
 - `git clone https://github.com/C0untFloyd/bark-gui`
@@ -46,7 +47,7 @@ For other OS or if you'd rather like to do this by yourself then:
 
 ### Usage
 
-- Windows Either run the `windows_start.bat` from the Installer or use the `StartBark.bat`
+- Windows Either run the `windows_run.bat` from the Installer or use the `StartBark.bat`
 - Linux `python webui.py (and optional commandline arguments)`
 
 #### Commandline Arguments:
@@ -57,7 +58,7 @@ For other OS or if you'd rather like to do this by yourself then:
 - -enablemps Support for Apple MPS
 - -offloadcpu Offload models to CPU
 
-On Windows edit the StartBark.bat to your likings.
+On Windows edit the `windows_run.bat` or `StartBark.bat` to customize your launch arguments.
 
 #### Text-to-Speech Tab
 
@@ -162,11 +163,19 @@ I'm doing this basically for myself but I'm glad if you enjoy my experiments too
 
 ### Changelog
 
+**10.05.2023** Release v0.4.7
+
+- BUGFIX: 1-click installer, several changes 
+- BUGFIX: New commandline args weren't used
+- Commandline-Args possible in windows installer
+
+
 **09.05.2023** Release v0.4.6
 
 - Restart Server in Settings
 - Interrupt & Cancel Generation
 - Delete Output Files moved to Settings
+
 
 **08.05.2023** Release v0.4.5
 

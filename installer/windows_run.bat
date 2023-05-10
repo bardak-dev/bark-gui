@@ -1,4 +1,6 @@
 @echo off
+REM Please set the following commandline arguments to your prefered settings
+set COMMANDLINE_ARGS=-autolaunch
 
 cd /D "%~dp0"
 
@@ -10,7 +12,7 @@ set PATH=%PATH%;%SystemRoot%\system32
 set INSTALL_DIR=%cd%\installer_files
 set CONDA_ROOT_PREFIX=%cd%\installer_files\conda
 set INSTALL_ENV_DIR=%cd%\installer_files\env
-set MINICONDA_DOWNLOAD_URL=https://repo.anaconda.com/miniconda/Miniconda3-py310_23.1.0-1-Windows-x86_64.exe
+set MINICONDA_DOWNLOAD_URL=https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe
 set conda_exists=F
 
 @rem figure out whether git and conda needs to be installed
@@ -45,21 +47,15 @@ if not exist "%INSTALL_ENV_DIR%\python.exe" ( echo. && echo Conda environment is
 @rem activate installer env
 call "%CONDA_ROOT_PREFIX%\condabin\conda.bat" activate "%INSTALL_ENV_DIR%" || ( echo. && echo Miniconda hook not found. && goto end )
 
-@rem always ask for update check
-if "%conda_exists%" == "T" (
-	choice /C:YN /M:"Check for Updates"
-	IF ERRORLEVEL == 1 (
-		echo Checking...
-		call python installer.py --update
-	)
-)
-
 @rem setup installer env
-echo Launching Bark GUI
-call python installer.py
+echo Launching Bark GUI - please edit windows_run.bat to customize commandline arguments
+call python installer.py %COMMANDLINE_ARGS%
 
 echo.
 echo Done!
 
 :end
 pause
+
+
+
