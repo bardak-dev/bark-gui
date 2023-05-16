@@ -1,4 +1,5 @@
 from cProfile import label
+import dataclasses
 from distutils.command.check import check
 from doctest import Example
 import gradio as gr
@@ -18,7 +19,7 @@ from settings import Settings
 
 from bark import SAMPLE_RATE
 from bark.clonevoice import clone_voice
-from bark.generation import SAMPLE_RATE, preload_models
+from bark.generation import SAMPLE_RATE, preload_models, _load_history_prompt, codec_decode
 from scipy.io.wavfile import write as write_wav
 from parseinput import split_and_recombine_text, build_ssml, is_ssml, create_clips_from_ssml
 from datetime import datetime
@@ -28,100 +29,117 @@ from id3tagging import add_id3_tag
 OUTPUTFOLDER = "Outputs"
 
 
-def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eos_prob, quick_generation, complete_settings, seed, progress=gr.Progress(track_tqdm=True)):
-    if text == None or len(text) < 1:
-        raise gr.Error('No text entered!')
-
+def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eos_prob, quick_generation, complete_settings, seed, batchcount, progress=gr.Progress(track_tqdm=True)):
     # Chunk the text into smaller pieces then combine the generated audio
 
     # generation settings
     if selected_speaker == 'None':
         selected_speaker = None
-    if seed != None and seed > 2**32 - 1:
-        logger.warning(f"Seed {seed} > 2**32 - 1 (max), setting to random")
-        seed = None
-    if seed == None or seed <= 0:
-        seed = np.random.default_rng().integers(1, 2**32 - 1)
-    assert(0 < seed and seed < 2**32)
 
     voice_name = selected_speaker
+
+    if text == None or len(text) < 1:
+       if selected_speaker == None:
+            raise gr.Error('No text entered!')
+
+       # Extract audio data from speaker if no text and speaker selected
+       voicedata = _load_history_prompt(voice_name)
+       audio_arr = codec_decode(voicedata["fine_prompt"])
+       result = create_filename(OUTPUTFOLDER, "None", "extract",".wav")
+       save_wav(audio_arr, result)
+       return result
+
+    if batchcount < 1:
+        batchcount = 1
+
+
+    silenceshort = np.zeros(int((float(settings.silence_sentence) / 1000.0) * SAMPLE_RATE), dtype=np.int16)  # quarter second of silence
+    silencelong = np.zeros(int((float(settings.silence_speakers) / 1000.0) * SAMPLE_RATE), dtype=np.float32)  # half a second of silence
     use_last_generation_as_history = "Use last generation as history" in complete_settings
     save_last_generation = "Save generation as Voice" in complete_settings
-    progress(0, desc="Generating")
+    for l in range(batchcount):
+        currentseed = seed
+        if seed != None and seed > 2**32 - 1:
+            logger.warning(f"Seed {seed} > 2**32 - 1 (max), setting to random")
+            currentseed = None
+        if currentseed == None or currentseed <= 0:
+            currentseed = np.random.default_rng().integers(1, 2**32 - 1)
+        assert(0 < currentseed and currentseed < 2**32)
 
-    silenceshort = np.zeros(int((float(settings.silence_sentence) / 1000.0) * SAMPLE_RATE), dtype=np.float32)  # quarter second of silence
-    silencelong = np.zeros(int((float(settings.silence_speakers) / 1000.0) * SAMPLE_RATE), dtype=np.float32)  # half a second of silence
-    full_generation = None
+        progress(0, desc="Generating")
 
-    all_parts = []
-    complete_text = ""
-    text = text.lstrip()
-    if is_ssml(text):
-        list_speak = create_clips_from_ssml(text)
-        prev_speaker = None
-        for i, clip in tqdm(enumerate(list_speak), total=len(list_speak)):
-            selected_speaker = clip[0]
-            # Add pause break between speakers
-            if i > 0 and selected_speaker != prev_speaker:
-                all_parts += [silencelong.copy()]
-            prev_speaker = selected_speaker
-            text = clip[1]
-            text = saxutils.unescape(text)
-            if selected_speaker == "None":
-                selected_speaker = None
+        full_generation = None
 
-            print(f"\nGenerating Text ({i+1}/{len(list_speak)}) -> {selected_speaker} (Seed {seed}):`{text}`")
-            complete_text += text
-            with pytorch_seed.SavedRNG(seed):
-                audio_array = generate_with_settings(text_prompt=text, voice_name=selected_speaker, semantic_temp=text_temp, coarse_temp=waveform_temp, eos_p=eos_prob)
-                seed = torch.random.initial_seed()
-            if len(list_speak) > 1:
-                filename = create_filename(OUTPUTFOLDER, seed, "audioclip",".wav")
-                save_wav(audio_array, filename)
-                add_id3_tag(filename, text, selected_speaker, seed)
+        all_parts = []
+        complete_text = ""
+        text = text.lstrip()
+        if is_ssml(text):
+            list_speak = create_clips_from_ssml(text)
+            prev_speaker = None
+            for i, clip in tqdm(enumerate(list_speak), total=len(list_speak)):
+                selected_speaker = clip[0]
+                # Add pause break between speakers
+                if i > 0 and selected_speaker != prev_speaker:
+                    all_parts += [silencelong.copy()]
+                prev_speaker = selected_speaker
+                text = clip[1]
+                text = saxutils.unescape(text)
+                if selected_speaker == "None":
+                    selected_speaker = None
 
-            all_parts += [audio_array]
-    else:
-        texts = split_and_recombine_text(text, settings.input_text_desired_length, settings.input_text_max_length)
-        for i, text in tqdm(enumerate(texts), total=len(texts)):
-            print(f"\nGenerating Text ({i+1}/{len(texts)}) -> {selected_speaker} (Seed {seed}):`{text}`")
-            complete_text += text
-            if quick_generation == True:
-                with pytorch_seed.SavedRNG(seed):
+                print(f"\nGenerating Text ({i+1}/{len(list_speak)}) -> {selected_speaker} (Seed {currentseed}):`{text}`")
+                complete_text += text
+                with pytorch_seed.SavedRNG(currentseed):
                     audio_array = generate_with_settings(text_prompt=text, voice_name=selected_speaker, semantic_temp=text_temp, coarse_temp=waveform_temp, eos_p=eos_prob)
-                    seed = torch.random.initial_seed()
-            else:
-                full_output = use_last_generation_as_history or save_last_generation
-                if full_output:
-                    full_generation, audio_array = generate_with_settings(text_prompt=text, voice_name=voice_name, semantic_temp=text_temp, coarse_temp=waveform_temp, eos_p=eos_prob, output_full=True)
+                    currentseed = torch.random.initial_seed()
+                if len(list_speak) > 1:
+                    filename = create_filename(OUTPUTFOLDER, currentseed, "audioclip",".wav")
+                    save_wav(audio_array, filename)
+                    add_id3_tag(filename, text, selected_speaker, currentseed)
+
+                all_parts += [audio_array]
+        else:
+            texts = split_and_recombine_text(text, settings.input_text_desired_length, settings.input_text_max_length)
+            for i, text in tqdm(enumerate(texts), total=len(texts)):
+                print(f"\nGenerating Text ({i+1}/{len(texts)}) -> {selected_speaker} (Seed {currentseed}):`{text}`")
+                complete_text += text
+                if quick_generation == True:
+                    with pytorch_seed.SavedRNG(currentseed):
+                        audio_array = generate_with_settings(text_prompt=text, voice_name=selected_speaker, semantic_temp=text_temp, coarse_temp=waveform_temp, eos_p=eos_prob)
+                        currentseed = torch.random.initial_seed()
                 else:
-                    audio_array = generate_with_settings(text_prompt=text, voice_name=voice_name, semantic_temp=text_temp, coarse_temp=waveform_temp, eos_p=eos_prob)
+                    full_output = use_last_generation_as_history or save_last_generation
+                    if full_output:
+                        full_generation, audio_array = generate_with_settings(text_prompt=text, voice_name=voice_name, semantic_temp=text_temp, coarse_temp=waveform_temp, eos_p=eos_prob, output_full=True)
+                    else:
+                        audio_array = generate_with_settings(text_prompt=text, voice_name=voice_name, semantic_temp=text_temp, coarse_temp=waveform_temp, eos_p=eos_prob)
 
-            # Noticed this in the HF Demo - convert to 16bit int -32767/32767 - most used audio format  
-            # audio_array = (audio_array * 32767).astype(np.int16)
+                # Noticed this in the HF Demo - convert to 16bit int -32767/32767 - most used audio format  
+                # audio_array = (audio_array * 32767).astype(np.int16)
 
-            if len(texts) > 1:
-                filename = create_filename(OUTPUTFOLDER, seed, "audioclip",".wav")
-                save_wav(audio_array, filename)
-                add_id3_tag(filename, text, selected_speaker, seed)
+                if len(texts) > 1:
+                    filename = create_filename(OUTPUTFOLDER, currentseed, "audioclip",".wav")
+                    save_wav(audio_array, filename)
+                    add_id3_tag(filename, text, selected_speaker, currentseed)
 
-            if quick_generation == False and (save_last_generation == True or use_last_generation_as_history == True):
-                # save to npz
-                voice_name = create_filename(OUTPUTFOLDER, seed, "audioclip", ".npz")
-                save_as_prompt(voice_name, full_generation)
-                if use_last_generation_as_history:
-                    selected_speaker = voice_name
+                if quick_generation == False and (save_last_generation == True or use_last_generation_as_history == True):
+                    # save to npz
+                    voice_name = create_filename(OUTPUTFOLDER, seed, "audioclip", ".npz")
+                    save_as_prompt(voice_name, full_generation)
+                    if use_last_generation_as_history:
+                        selected_speaker = voice_name
 
-            all_parts += [audio_array]
-            # Add short pause between sentences
-            if text[-1] in "!?.\n" and i > 1:
-                all_parts += [silenceshort.copy()]
+                all_parts += [audio_array]
+                # Add short pause between sentences
+                if text[-1] in "!?.\n" and i > 1:
+                    all_parts += [silenceshort.copy()]
 
-    # save & play audio
-    result = create_filename(OUTPUTFOLDER, seed, "final",".wav")
-    save_wav(np.concatenate(all_parts), result)
-    # write id3 tag with text truncated to 60 chars, as a precaution...
-    add_id3_tag(result, complete_text, selected_speaker, seed)
+        # save & play audio
+        result = create_filename(OUTPUTFOLDER, currentseed, "final",".wav")
+        save_wav(np.concatenate(all_parts), result)
+        # write id3 tag with text truncated to 60 chars, as a precaution...
+        add_id3_tag(result, complete_text, selected_speaker, currentseed)
+
     return result
 
 def create_filename(path, seed, name, extension):
@@ -210,7 +228,7 @@ gradio: {gr.__version__}
     
 
 logger = logging.getLogger(__name__)
-APPTITLE = "Bark UI Enhanced v0.4.6"
+APPTITLE = "Bark UI Enhanced v0.4.8"
 
 
 autolaunch = False
@@ -284,8 +302,8 @@ while run_server:
                     placeholder = "Enter text here."
                     input_text = gr.Textbox(label="Input Text", lines=4, placeholder=placeholder)
                 with gr.Column():
-                    seedcomponent = gr.Number(label="Seed (default -1 = Random)", precision=0, value=-1)
-                    convert_to_ssml_button = gr.Button("Convert Text to SSML")
+                        seedcomponent = gr.Number(label="Seed (default -1 = Random)", precision=0, value=-1)
+                        batchcount = gr.Number(label="Batch count", precision=0, value=1)
             with gr.Row():
                 with gr.Column():
                     examples = [
@@ -309,6 +327,8 @@ while run_server:
     </speak>"""
                        ]
                     examples = gr.Examples(examples=examples, inputs=input_text)
+                with gr.Column():
+                    convert_to_ssml_button = gr.Button("Convert Input Text to SSML")
 
             with gr.Row():
                 with gr.Column():
@@ -364,7 +384,7 @@ while run_server:
 
         quick_gen_checkbox.change(fn=on_quick_gen_changed, inputs=quick_gen_checkbox, outputs=complete_settings)
         convert_to_ssml_button.click(convert_text_to_ssml, inputs=[input_text, speaker],outputs=input_text)
-        gen_click = tts_create_button.click(generate_text_to_speech, inputs=[input_text, speaker, text_temp, waveform_temp, eos_prob, quick_gen_checkbox, complete_settings, seedcomponent],outputs=output_audio)
+        gen_click = tts_create_button.click(generate_text_to_speech, inputs=[input_text, speaker, text_temp, waveform_temp, eos_prob, quick_gen_checkbox, complete_settings, seedcomponent, batchcount],outputs=output_audio)
         button_stop_generation.click(fn=None, inputs=None, outputs=None, cancels=[gen_click])
         # Javascript hack to display modal confirmation dialog
         js = "(x) => confirm('Are you sure? This will remove all files from output folder')"

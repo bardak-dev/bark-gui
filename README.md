@@ -163,6 +163,13 @@ I'm doing this basically for myself but I'm glad if you enjoy my experiments too
 
 ### Changelog
 
+**16.05.2023** Release v0.4.8
+
+- Batch count added for multiple generations of same input text - useful for comparing seeds
+- Commented out rounding assert which seemed to break voice cloning with very long audio clips
+- QoL Merges from Suno Main
+
+
 **10.05.2023** Release v0.4.7
 
 - BUGFIX: 1-click installer, several changes 
