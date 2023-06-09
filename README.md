@@ -5,8 +5,9 @@
 
 A Gradio Web UI for an extended - easy to use - Bark Version, focused on Windows but not limited to.
 Based on [Bark](https://github.com/suno-ai/bark)
-
-[[https://github.com/C0untFloyd/bark-gui/blob/main/docs/tts.png|alt=Text-to-Speech-Tab]]
+<p>
+<img src="./docs/tts.png" width="600"></img>
+</P>
 
 ### Additional Features
 
