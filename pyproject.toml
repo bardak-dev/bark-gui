@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bark-ui-enhanced"
-version = "0.4.8"
+version = "0.7.0"
 description = "Bark text to audio model with addition features and a Web UI"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -20,15 +20,12 @@ dependencies = [
     "encodec",
     "funcy",
     "huggingface-hub>=0.14.1",
-    "mutagen",
     "numpy",
-    "pytorch_seed",
     "scipy",
     "tokenizers",
     "torch",
     "tqdm",
     "transformers",
-    "pyyaml"
 ]
 
 [project.urls]

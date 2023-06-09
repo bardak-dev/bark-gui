@@ -3,24 +3,23 @@
 [Changelog](#changelog) • [Example](#example-input) • [Installation](#installation) • [Usage](#usage) • [FAQ](#faq)
 
 
-A Gradio Web UI for an extended - easy to use - Bark Version, focused on Windows running locally.
+A Gradio Web UI for an extended - easy to use - Bark Version, focused on Windows but not limited to.
 Based on [Bark](https://github.com/suno-ai/bark)
 
-It now has several extra features, which might make this usable for simple people
-like me, who just want to experiment with Bark.
-
-
+[[https://github.com/C0untFloyd/bark-gui/blob/main/docs/tts.png|alt=Text-to-Speech-Tab]]
 
 ### Additional Features
 
-- Web GUI
+- Web GUI & Server
 - Creation of very large text passages in chunks, combining the parts into a final result
-- Creation of new Voices possible (so far very bad results, hopefully improving in the future)
+- Voice cloning (input your voice audio & get a speaker back)
+- Swap Voice in audio to the one you selected
 - Easy Selection of Small/Big Models, additional commandline arguments
-- Works with 8Gb GPU or force it to use your CPU instead
+- Works with 6Gb NVIDIA/Apple GPU or force it to use your CPU instead
 - Can input SSML to allow fixed voice dialogues (preliminary so far)
 - Generation Metadata added as ID3 Tag to WAV
 - Specify initial Seed and logging for more stability and easier reproduction of results
+- Batch Generation to experiment with different seeds
 - Gradio Theme Support 
 
 ### Example Input:
@@ -36,86 +35,23 @@ We know NOW that in the early years of the twentieth century, this world was bei
 For Windows you can now use the 1-click installer released. This will download and install everything
 in a handy conda environment. This not only installs the application but also runs it, once installed.
 
+### **If you already have a windows install from a version prior to v0.7 then it might be a good idea to re-install with the latest installer, because it changed a lot and the old installer isn't compatible. To avoid re-downloading the models you could create a backup of the bark-gui\models folder first **
+ 
 For other OS or if you'd rather like to do this by yourself then:
 
 - `git clone https://github.com/C0untFloyd/bark-gui`
 - `pip install .`
-- `pip install gradio`
-- `pip install soundfile` 
-- (optional but necessary for fast generation) install Torch with CUDA `pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117 --force-reinstall` 
+- (optional but best choice with NVIDIA GPUs) install Torch with CUDA `pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --force-reinstall`
+- `pip install -r requirements.txt`
 
 
 ### Usage
 
-- Windows Either run the `windows_run.bat` from the Installer or use the `StartBark.bat`
+- Windows Either run the `windows_run.bat` from the Installer or use the `StartBark.bat`. Edit the .bat files to add your desired commandline arguments 
 - Linux `python webui.py (and optional commandline arguments)`
 
-#### Commandline Arguments:
+For more detailed instructions please have a look into the [Wiki](https://github.com/C0untFloyd/bark-gui/wiki)
 
-- -autolaunch Automatically open Browser with Bark-Tab
-- -smallmodels Use small models, for GPUs with less than 10Gb Vram or to speed up process
-- -forcecpu Force processing on CPU, if your GPU isn't up to the task
-- -enablemps Support for Apple MPS
-- -offloadcpu Offload models to CPU
-
-On Windows edit the `windows_run.bat` or `StartBark.bat` to customize your launch arguments.
-
-#### Text-to-Speech Tab
-
-Input any text to let Bark create a Speech, use the Dropbox to choose any voice from
-the prompts folder (also custom ones). Choose 'None' for undefined (usefull for MAN:/WOMAN: prompts).
-The `Quick Generation` checkbox creates audio a lot faster but might be more unstable and perhaps not that subtle
-as this doesn't use finetuning parameters.
-Checking `Use last generation as history` saves voices of each audio chunk to the outputs folder. If you want
-to use them for output, just copy them into the assets/prompts folder.
-Contrary to the original Bark, you can input any text length. The result will be created in chunks
-and merged into 1 audio-file at the end. This can be played from the UI and the WAV-File(s) are saved
-into the Outputs folder.
-    
-
-<p>
-<img src="./docs/tts.png" width="600"></img>
-</P>
-
-A new experimental feature is SSML input and conversion. If you're writing a dialogue like this:
-> I'm refreshing the Bark Github Page like crazy, there might be a new update every second!
-
-> You're just very disturbed
-
-and you've selected Voice 'en_speaker_0' in the dropdown box, clicking on `Convert text to SSML` the text would be converted to
-
-<pre>
-<code>
-&lt?xml version="1.0"?&gt
-&ltspeak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://www.w3.org/2001/10/synthesis
-                   http://www.w3.org/TR/speech-synthesis/synthesis.xsd"
-         xml:lang="en-US"&gt
-         
-&ltvoice name="en_speaker_0"&gtI'm refreshing the Bark Github Page like crazy, there might be a new update every second!&lt/voice&gt
-&ltvoice name="en_speaker_0"&gtYou're just very disturbed &lt/voice&gt
-&lt/speak&gt</code>
-</pre>
-
-As you can see every new line will be split as a potential new line for another voice. 
-Afterwards you could change one of the speaker names (name="en_speaker_0) to create dialogues with fixed voices. If the number of words
-exceeds the max for Bark generation, new lines will be created reusing the voice from the sentence before that.
-
-Clicking on the `Generate` Button will automatically detect if this is SSML input or just plain text.
-
-
-
-#### Clone Voice Tab
-
-It's possible to clone your voice, although results so far aren't good.
-Input a WAV Audio File with your sampled voice at the top. Below that, input your spoken
-words. The path and filename text can be adjusted as you like, the default is the path to
-the folder Bark is using for its voices. By clicking "Create" the process is started.
-
-<p>
-<img src="./docs/clonevoice.png" width="600"></img>
-</p>
 
 ### FAQ
 **Q:** Why do I get the warning "No GPU being used. Careful, inference might be very slow!", although I do have a NVIDIA GPU?
@@ -146,9 +82,10 @@ be especially true for languages other than english. If you're not satisfied wit
 
 **Q:** Why are cloned voices so bad?
 
-Probably because the code for cloning is a lot of guesswork so far and was implemented by the authors of the fork
-I mentioned at the top. The original Bark authors don't condone voice cloning and I think it will take some time for the
-community to find 'the secret sauce'. Best results so far seem to use a very short input clip of 2-4 seconds.
+This changed a short time ago for the better. Cloned voices aren't that bad anymore and with a bit of luck and a good audio input you can reproduce very stable speakers.
+The reason why this is so hard is that the original Bark authors don't condone voice cloning and didn't give away the crucial model they are using for
+creating speakers. So the community has to find ways to get around this and so far the best working method involves using the base Hubert model and training a custom quantifier.
+This was found out by [Mylo](https://github.com/gitmylo/bark-voice-cloning-HuBERT-quantizer) so huge thanks to him! 
 
 
 **Q:** Why did you hack this together, when will you implement feature xxx?
@@ -163,9 +100,20 @@ I'm doing this basically for myself but I'm glad if you enjoy my experiments too
 
 ### Changelog
 
+**09.06.2023** Release V0.7 (huge breaking changes!)
+
+- Implemented new voice cloning method, made possible by [Mylo](https://github.com/gitmylo/bark-voice-cloning-HuBERT-quantizer)
+- Added Swap Voice Tab, to swap voices with selected speakers in input audio file, also made possible by the use of Hubert
+- Added Training Preparation & Training Tabs to train quantifiers for your own native language (WIP)
+- Trained my own german quantifier/tokenizer which will be downloaded/used when you're selecting german as base language for cloning
+- Moved extra dependencies into separate requirements.txt allowing a simpler, cleaner install
+- Rewrote parts of the 1-click installer due to that reason
+- Refactored lots of stuff 
+
+
 **16.05.2023** Release v0.4.8
 
-- Batch count added for multiple generations of same input text - useful for comparing seeds
+- Batch count added for multiple generations of same input text - useful for comparing seeds or random voices
 - Commented out rounding assert which seemed to break voice cloning with very long audio clips
 - QoL Merges from Suno Main
 

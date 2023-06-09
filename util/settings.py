@@ -17,6 +17,7 @@ class Settings:
             self.input_text_max_length = data.get('input_text_max_length', 170)
             self.silence_sentence = data.get('silence_between_sentences', 250)
             self.silence_speakers = data.get('silence_between_speakers', 500)
+            self.output_folder_path = data.get('output_folder_path', 'outputs')
 
         except:
             self.selected_theme = "gstaff/xkcd"
@@ -31,6 +32,7 @@ class Settings:
             'input_text_max_length' : self.input_text_max_length, 
             'silence_between_sentences': self.silence_sentence,
             'silence_between_speakers': self.silence_speakers,
+            'output_folder_path': self.output_folder_path
         }
         with open(self.config_file, 'w') as f:
             yaml.dump(data, f)

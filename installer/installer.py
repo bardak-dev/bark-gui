@@ -30,7 +30,7 @@ def check_env():
 def install_dependencies():
     # Install Git and clone repo
     run_cmd("conda install -y -k git")
-    run_cmd("git clone https://github.com/C0untFloyd/bark-gui.git")
+    #run_cmd("git clone https://github.com/C0untFloyd/bark-gui.git")
 
     # Select your GPU or, choose to run in CPU mode
     print("Do you have a GPU (Nvidia)?")
@@ -39,21 +39,19 @@ def install_dependencies():
     gpuchoice = input("Input> ").lower()
 
     if gpuchoice == "y":
-        run_cmd("pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118")
+        run_cmd("python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --force-reinstall")
 
-    run_cmd("pip install IPython")
-    run_cmd("pip install soundfile")
-    run_cmd("pip install gradio")
     # Install the webui dependencies
     update_dependencies()
 
 
 def update_dependencies():
     os.chdir("bark-gui")
-    run_cmd("git pull")
+    #run_cmd("git pull")
     # Installs/Updates dependencies from all requirements.txt
     run_cmd("python -m pip install .")
- 
+    run_cmd("python -m pip install -r requirements.txt")
+
 
 def start_app():
     os.chdir("bark-gui")

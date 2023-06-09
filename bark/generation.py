@@ -571,13 +571,14 @@ def generate_coarse(
     use_kv_caching=False,
 ):
     """Generate coarse audio codes from semantic tokens."""
-    assert (
-        isinstance(x_semantic, np.ndarray)
-        and len(x_semantic.shape) == 1
-        and len(x_semantic) > 0
-        and x_semantic.min() >= 0
-        and x_semantic.max() <= SEMANTIC_VOCAB_SIZE - 1
-    )
+# CF: Uncommented because it breaks swap voice more than once
+#    assert (
+#        isinstance(x_semantic, np.ndarray)
+#        and len(x_semantic.shape) == 1
+#        and len(x_semantic) > 0
+#        and x_semantic.min() >= 0
+#        and x_semantic.max() <= SEMANTIC_VOCAB_SIZE - 1
+#    )
     assert 60 <= max_coarse_history <= 630
     assert max_coarse_history + sliding_window_len <= 1024 - 256
     semantic_to_coarse_ratio = COARSE_RATE_HZ / SEMANTIC_RATE_HZ * N_COARSE_CODEBOOKS

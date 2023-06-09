@@ -20,7 +20,8 @@ WORKDIR /bark/bark-gui
 ENV PATH=$PATH:/bark/.local/bin
 
 # Install dependancies
-RUN pip install . && pip install gradio && pip install soundfile
+RUN pip install .
+RUN pip install -r requirements.txt
 
 # List on all addresses, since we are in a container.
 RUN sed -i "s/server_name: ''/server_name: 0.0.0.0/g" ./config.yaml

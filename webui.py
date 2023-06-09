@@ -14,19 +14,22 @@ import time
 from xml.sax import saxutils
 from bark.api import generate_with_settings
 from bark.api import save_as_prompt
-from settings import Settings
+from util.settings import Settings
 #import nltk
 
 from bark import SAMPLE_RATE
-from bark.clonevoice import clone_voice
+from cloning.clonevoice import clone_voice
 from bark.generation import SAMPLE_RATE, preload_models, _load_history_prompt, codec_decode
 from scipy.io.wavfile import write as write_wav
-from parseinput import split_and_recombine_text, build_ssml, is_ssml, create_clips_from_ssml
+from util.parseinput import split_and_recombine_text, build_ssml, is_ssml, create_clips_from_ssml
 from datetime import datetime
 from tqdm.auto import tqdm
-from id3tagging import add_id3_tag
+from util.helper import create_filename, add_id3_tag
+from swap_voice import swap_voice_from_audio
+from training.training_prepare import prepare_semantics_from_text, prepare_wavs_from_semantics
+from training.train import training_prepare_files, train
 
-OUTPUTFOLDER = "Outputs"
+settings = Settings('config.yaml')
 
 
 def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eos_prob, quick_generation, complete_settings, seed, batchcount, progress=gr.Progress(track_tqdm=True)):
@@ -45,7 +48,7 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eo
        # Extract audio data from speaker if no text and speaker selected
        voicedata = _load_history_prompt(voice_name)
        audio_arr = codec_decode(voicedata["fine_prompt"])
-       result = create_filename(OUTPUTFOLDER, "None", "extract",".wav")
+       result = create_filename(settings.output_folder_path, "None", "extract",".wav")
        save_wav(audio_arr, result)
        return result
 
@@ -93,7 +96,7 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eo
                     audio_array = generate_with_settings(text_prompt=text, voice_name=selected_speaker, semantic_temp=text_temp, coarse_temp=waveform_temp, eos_p=eos_prob)
                     currentseed = torch.random.initial_seed()
                 if len(list_speak) > 1:
-                    filename = create_filename(OUTPUTFOLDER, currentseed, "audioclip",".wav")
+                    filename = create_filename(settings.output_folder_path, currentseed, "audioclip",".wav")
                     save_wav(audio_array, filename)
                     add_id3_tag(filename, text, selected_speaker, currentseed)
 
@@ -118,13 +121,13 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eo
                 # audio_array = (audio_array * 32767).astype(np.int16)
 
                 if len(texts) > 1:
-                    filename = create_filename(OUTPUTFOLDER, currentseed, "audioclip",".wav")
+                    filename = create_filename(settings.output_folder_path, currentseed, "audioclip",".wav")
                     save_wav(audio_array, filename)
                     add_id3_tag(filename, text, selected_speaker, currentseed)
 
                 if quick_generation == False and (save_last_generation == True or use_last_generation_as_history == True):
                     # save to npz
-                    voice_name = create_filename(OUTPUTFOLDER, seed, "audioclip", ".npz")
+                    voice_name = create_filename(settings.output_folder_path, seed, "audioclip", ".npz")
                     save_as_prompt(voice_name, full_generation)
                     if use_last_generation_as_history:
                         selected_speaker = voice_name
@@ -135,27 +138,13 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eo
                     all_parts += [silenceshort.copy()]
 
         # save & play audio
-        result = create_filename(OUTPUTFOLDER, currentseed, "final",".wav")
+        result = create_filename(settings.output_folder_path, currentseed, "final",".wav")
         save_wav(np.concatenate(all_parts), result)
         # write id3 tag with text truncated to 60 chars, as a precaution...
         add_id3_tag(result, complete_text, selected_speaker, currentseed)
 
     return result
 
-def create_filename(path, seed, name, extension):
-    now = datetime.now()
-    date_str =now.strftime("%m-%d-%Y")
-    outputs_folder = os.path.join(os.getcwd(), path)
-    if not os.path.exists(outputs_folder):
-        os.makedirs(outputs_folder)
-
-    sub_folder = os.path.join(outputs_folder, date_str)
-    if not os.path.exists(sub_folder):
-        os.makedirs(sub_folder)
-
-    time_str = now.strftime("%H-%M-%S")
-    file_name = f"{name}_{time_str}_s{seed}{extension}"
-    return os.path.join(sub_folder, file_name)
 
 
 def save_wav(audio_array, filename):
@@ -177,7 +166,7 @@ def on_quick_gen_changed(checkbox):
 
 def delete_output_files(checkbox_state):
     if checkbox_state:
-        outputs_folder = os.path.join(os.getcwd(), OUTPUTFOLDER)
+        outputs_folder = os.path.join(os.getcwd(), settings.output_folder_path)
         if os.path.exists(outputs_folder):
             purgedir(outputs_folder)
     return False
@@ -196,6 +185,21 @@ def purgedir(parent):
 
 def convert_text_to_ssml(text, selected_speaker):
     return build_ssml(text, selected_speaker)
+
+
+def training_prepare(selected_step, num_text_generations, progress=gr.Progress(track_tqdm=True)):
+    if selected_step == prepare_training_list[0]:
+        prepare_semantics_from_text()
+    else:
+        prepare_wavs_from_semantics()
+    return None
+
+
+def start_training(save_model_epoch, max_epochs, progress=gr.Progress(track_tqdm=True)):
+    training_prepare_files("./training/data/", "./training/data/checkpoint/hubert_base_ls960.pt")
+    train("./training/data/", save_model_epoch, max_epochs)
+    return None
+
 
 
 def apply_settings(themes, input_server_name, input_server_port, input_server_public, input_desired_len, input_max_len, input_silence_break, input_silence_speaker):
@@ -228,7 +232,7 @@ gradio: {gr.__version__}
     
 
 logger = logging.getLogger(__name__)
-APPTITLE = "Bark UI Enhanced v0.4.8"
+APPTITLE = "Bark UI Enhanced v0.7"
 
 
 autolaunch = False
@@ -253,24 +257,9 @@ print(f'autolaunch={autolaunch}\n\n')
 print("Preloading Models\n")
 preload_models()
 
-settings = Settings('config.yaml')
-
-# Collect all existing speakers/voices in dir
-speakers_list = []
-
-for root, dirs, files in os.walk("./bark/assets/prompts"):
-	for file in files:
-		if(file.endswith(".npz")):
-			pathpart = root.replace("./bark/assets/prompts", "")
-			name = os.path.join(pathpart, file[:-4])
-			if name.startswith("/") or name.startswith("\\"):
-				name = name[1:]
-			speakers_list.append(name)
-
-speakers_list = sorted(speakers_list, key=lambda x: x.lower())
-speakers_list.insert(0, 'None')
-
 available_themes = ["Default", "gradio/glass", "gradio/monochrome", "gradio/seafoam", "gradio/soft", "gstaff/xkcd", "freddyaboulton/dracula_revamped", "ysharma/steampunk"]
+tokenizer_language_list = ["de","en", "pl"]
+prepare_training_list = ["Step 1: Semantics from Text","Step 2: WAV from Semantics"]
 
 seed = -1
 server_name = settings.server_name
@@ -285,6 +274,21 @@ global restart_server
 run_server = True
 
 while run_server:
+    # Collect all existing speakers/voices in dir
+    speakers_list = []
+
+    for root, dirs, files in os.walk("./bark/assets/prompts"):
+        for file in files:
+            if file.endswith(".npz"):
+                pathpart = root.replace("./bark/assets/prompts", "")
+                name = os.path.join(pathpart, file[:-4])
+                if name.startswith("/") or name.startswith("\\"):
+                     name = name[1:]
+                speakers_list.append(name)
+
+    speakers_list = sorted(speakers_list, key=lambda x: x.lower())
+    speakers_list.insert(0, 'None')
+
     print(f'Launching {APPTITLE} Server')
 
     # Create Gradio Blocks
@@ -355,13 +359,60 @@ while run_server:
             with gr.Row():
                 output_audio = gr.Audio(label="Generated Audio", type="filepath")
 
+        with gr.Tab("Swap Voice"):
+            with gr.Row():
+                 swap_audio_filename = gr.Audio(label="Input audio.wav to swap voice", source="upload", type="filepath")
+            with gr.Row():
+                 with gr.Column():
+                     swap_tokenizer_lang = gr.Dropdown(tokenizer_language_list, label="Base Language Tokenizer", value=tokenizer_language_list[1])
+                     swap_seed = gr.Number(label="Seed (default -1 = Random)", precision=0, value=-1)
+                 with gr.Column():
+                     speaker_swap = gr.Dropdown(speakers_list, value=speakers_list[0], label="Voice")
+                     swap_batchcount = gr.Number(label="Batch count", precision=0, value=1)
+            with gr.Row():
+                swap_voice_button = gr.Button("Swap Voice")
+            with gr.Row():
+                output_swap = gr.Audio(label="Generated Audio", type="filepath")
+
         with gr.Tab("Clone Voice"):
-            input_audio_filename = gr.Audio(label="Input audio.wav", source="upload", type="filepath")
-            transcription_text = gr.Textbox(label="Transcription Text", lines=1, placeholder="Enter Text of your Audio Sample here...")
-            initialname = "./bark/assets/prompts/custom/MeMyselfAndI"
-            output_voice = gr.Textbox(label="Filename of trained Voice", lines=1, placeholder=initialname, value=initialname)
-            clone_voice_button = gr.Button("Create Voice")
-            dummy = gr.Text(label="Progress")
+            with gr.Row():
+                input_audio_filename = gr.Audio(label="Input audio.wav", source="upload", type="filepath")
+            #transcription_text = gr.Textbox(label="Transcription Text", lines=1, placeholder="Enter Text of your Audio Sample here...")
+            with gr.Row():
+                with gr.Column():
+                    initialname = "./bark/assets/prompts/custom/MeMyselfAndI"
+                    output_voice = gr.Textbox(label="Filename of trained Voice", lines=1, placeholder=initialname, value=initialname)
+                with gr.Column():
+                    tokenizerlang = gr.Dropdown(tokenizer_language_list, label="Base Language Tokenizer", value=tokenizer_language_list[1])
+            with gr.Row():
+                clone_voice_button = gr.Button("Create Voice")
+            with gr.Row():
+                dummy = gr.Text(label="Progress")
+
+        with gr.Tab("Training Data Prepare"):
+            gr.Markdown("This tab should be used to generate the training dataset. For Step 1 put some books into the inputtext folder in UTF-8 Text Format.")
+            prepare_semantics_number = gr.Number(label="Number of semantics to create", precision=0, value=3079)
+            prepare_dropdown = gr.Dropdown(prepare_training_list, value=prepare_training_list[0], label="Prepare")
+            training_prepare_button = gr.Button("Generate")
+            dummytrd = gr.Text(label="Progress")
+
+        with gr.Tab("Training"):
+            with gr.Row():
+                gr.Markdown("This tab is used to train the actual model (language).")
+            with gr.Row():
+                with gr.Column():
+                    save_model_epoch = gr.Number(label="Auto-save model after number of epochs", precision=0, value=1)
+                with gr.Column():
+                    max_epochs = gr.Number(label="Train for number of epochs", precision=0, value=6)
+            with gr.Row():
+                with gr.Column():
+                    allowed_chars = ' abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_+=\"\':;[]{}/<>,.`~'
+                    allowedcharsfilter = gr.Textbox(label="Allowed chars for text input", lines=1, value=allowed_chars)
+                with gr.Column():
+                    train_button = gr.Button("Start Training")
+            with gr.Row():
+                dummytrain = gr.Text(label="Progress")
+
 
         with gr.Tab("Settings"):
             with gr.Row():
@@ -390,9 +441,14 @@ while run_server:
         js = "(x) => confirm('Are you sure? This will remove all files from output folder')"
         button_delete_files.click(None, None, hidden_checkbox, _js=js)
         hidden_checkbox.change(delete_output_files, [hidden_checkbox], [hidden_checkbox])
-        clone_voice_button.click(clone_voice, inputs=[input_audio_filename, transcription_text, output_voice], outputs=dummy)
+
+        swap_voice_button.click(swap_voice_from_audio, inputs=[swap_audio_filename, speaker_swap, swap_tokenizer_lang, swap_seed, swap_batchcount], outputs=output_swap)
+        clone_voice_button.click(clone_voice, inputs=[input_audio_filename, output_voice], outputs=dummy)
+        training_prepare_button.click(training_prepare, inputs=[prepare_dropdown, prepare_semantics_number], outputs=dummytrd)
+        train_button.click(start_training, inputs=[save_model_epoch, max_epochs], outputs=dummytrain)
         button_apply_settings.click(apply_settings, inputs=[themes, input_server_name, input_server_port, share_checkbox, input_desired_len, input_max_len, input_silence_break, input_silence_speakers])
         button_apply_restart.click(restart)
+
         restart_server = False
         try:
             barkgui.queue().launch(inbrowser=autolaunch, server_name=server_name, server_port=server_port, share=settings.server_share, prevent_thread_lock=True)
