@@ -30,7 +30,7 @@ def check_env():
 def install_dependencies():
     # Install Git and clone repo
     run_cmd("conda install -y -k git")
-    #run_cmd("git clone https://github.com/C0untFloyd/bark-gui.git")
+    run_cmd("git clone https://github.com/C0untFloyd/bark-gui.git")
 
     # Select your GPU or, choose to run in CPU mode
     print("Do you have a GPU (Nvidia)?")
@@ -47,7 +47,10 @@ def install_dependencies():
 
 def update_dependencies():
     os.chdir("bark-gui")
-    #run_cmd("git pull")
+	# do a hard reset for to update even if there are local changes
+    run_cmd("git fetch --all")
+    run_cmd("git reset --hard origin/main")
+    run_cmd("git pull")
     # Installs/Updates dependencies from all requirements.txt
     run_cmd("python -m pip install .")
     run_cmd("python -m pip install -r requirements.txt")

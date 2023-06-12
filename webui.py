@@ -232,7 +232,7 @@ gradio: {gr.__version__}
     
 
 logger = logging.getLogger(__name__)
-APPTITLE = "Bark UI Enhanced v0.7"
+APPTITLE = "Bark UI Enhanced v0.7.1"
 
 
 autolaunch = False
@@ -443,7 +443,7 @@ while run_server:
         hidden_checkbox.change(delete_output_files, [hidden_checkbox], [hidden_checkbox])
 
         swap_voice_button.click(swap_voice_from_audio, inputs=[swap_audio_filename, speaker_swap, swap_tokenizer_lang, swap_seed, swap_batchcount], outputs=output_swap)
-        clone_voice_button.click(clone_voice, inputs=[input_audio_filename, output_voice], outputs=dummy)
+        clone_voice_button.click(clone_voice, inputs=[input_audio_filename, tokenizerlang, output_voice], outputs=dummy)
         training_prepare_button.click(training_prepare, inputs=[prepare_dropdown, prepare_semantics_number], outputs=dummytrd)
         train_button.click(start_training, inputs=[save_model_epoch, max_epochs], outputs=dummytrain)
         button_apply_settings.click(apply_settings, inputs=[themes, input_server_name, input_server_port, share_checkbox, input_desired_len, input_max_len, input_silence_break, input_silence_speakers])
