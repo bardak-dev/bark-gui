@@ -23,8 +23,10 @@ output_wav = 'training/data/output_wav'
 def prepare_semantics_from_text(num_generations):
     loaded_data = load_books(True)
 
+    use_gpu = not os.environ.get("BARK_FORCE_CPU", False)
+
     print('Loading semantics model')
-    load_model(use_gpu=True, use_small=False, force_reload=False, model_type='text')
+    load_model(use_gpu=use_gpu, use_small=False, force_reload=False, model_type='text')
 
     if not os.path.isdir(output):
         os.mkdir(output)
@@ -49,10 +51,12 @@ def prepare_wavs_from_semantics():
     if not os.path.isdir(output_wav):
         os.mkdir(output_wav)
 
+    use_gpu = not os.environ.get("BARK_FORCE_CPU", False)
+
     print('Loading coarse model')
-    load_model(use_gpu=True, use_small=False, force_reload=False, model_type='coarse')
+    load_model(use_gpu=use_gpu, use_small=False, force_reload=False, model_type='coarse')
     print('Loading fine model')
-    load_model(use_gpu=True, use_small=False, force_reload=False, model_type='fine')
+    load_model(use_gpu=use_gpu, use_small=False, force_reload=False, model_type='fine')
 
     files = fnmatch.filter(os.listdir(output), '*.npy')
     current = 1

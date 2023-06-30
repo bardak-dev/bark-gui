@@ -189,7 +189,7 @@ def convert_text_to_ssml(text, selected_speaker):
 
 def training_prepare(selected_step, num_text_generations, progress=gr.Progress(track_tqdm=True)):
     if selected_step == prepare_training_list[0]:
-        prepare_semantics_from_text()
+        prepare_semantics_from_text(num_text_generations)
     else:
         prepare_wavs_from_semantics()
     return None
@@ -232,7 +232,7 @@ gradio: {gr.__version__}
     
 
 logger = logging.getLogger(__name__)
-APPTITLE = "Bark UI Enhanced v0.7.1"
+APPTITLE = "Bark UI Enhanced v0.7.2"
 
 
 autolaunch = False
@@ -241,9 +241,11 @@ if len(sys.argv) > 1:
     autolaunch = "-autolaunch" in sys.argv
 
 
-if torch.cuda.is_available() == False:
+if torch.cuda.is_available() == False and torch.backends.mps.is_available():
     os.environ['BARK_FORCE_CPU'] = 'True'
-    logger.warning("No CUDA detected, fallback to CPU!")
+    logger.warning("No CUDA or MPS detected, fallback to CPU!")
+
+
 
 print(f'smallmodels={os.environ.get("SUNO_USE_SMALL_MODELS", False)}')
 print(f'enablemps={os.environ.get("SUNO_ENABLE_MPS", False)}')

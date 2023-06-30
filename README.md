@@ -101,6 +101,14 @@ I'm doing this basically for myself but I'm glad if you enjoy my experiments too
 
 ### Changelog
 
+**30.06.2023** Release V0.7.2
+
+- Bugfix: Prepare Training missing number of generations
+- Bugfix: Use GPU always true in training
+- Bugfix: Enable MPS not working
+- Training description in Wiki
+
+
 **09.06.2023** Release V0.7 (huge breaking changes!)
 
 - Implemented new voice cloning method, made possible by [Mylo](https://github.com/gitmylo/bark-voice-cloning-HuBERT-quantizer)
