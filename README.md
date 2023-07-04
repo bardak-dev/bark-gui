@@ -101,12 +101,16 @@ I'm doing this basically for myself but I'm glad if you enjoy my experiments too
 
 ### Changelog
 
+**04.07.2023** Release V0.7.3
+
+- Spanish tokenizer by [MaxLancer](https://huggingface.co/Lancer1408/bark-es-tokenizer) added
+
+
 **30.06.2023** Release V0.7.2
 
 - Bugfix: Prepare Training missing number of generations
 - Bugfix: Use GPU always true in training
 - Bugfix: Enable MPS not working
-- Training description in Wiki
 
 
 **09.06.2023** Release V0.7 (huge breaking changes!)
