@@ -232,7 +232,7 @@ gradio: {gr.__version__}
     
 
 logger = logging.getLogger(__name__)
-APPTITLE = "Bark UI Enhanced v0.7.2"
+APPTITLE = "Bark UI Enhanced v0.7.3"
 
 
 autolaunch = False
@@ -260,7 +260,7 @@ print("Preloading Models\n")
 preload_models()
 
 available_themes = ["Default", "gradio/glass", "gradio/monochrome", "gradio/seafoam", "gradio/soft", "gstaff/xkcd", "freddyaboulton/dracula_revamped", "ysharma/steampunk"]
-tokenizer_language_list = ["de","en", "pl"]
+tokenizer_language_list = ["de","en", "es", "pl"]
 prepare_training_list = ["Step 1: Semantics from Text","Step 2: WAV from Semantics"]
 
 seed = -1

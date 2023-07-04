@@ -33,6 +33,9 @@ class HuBERTManager:
             if tokenizer_lang == 'en':
                 repo = 'GitMylo/bark-voice-cloning'
                 model = 'quantifier_hubert_base_ls960_14.pth'
+            elif tokenizer_lang == 'es':
+                repo = 'Lancer1408/bark-es-tokenizer'
+                model = 'es_tokenizer.pth'
             elif tokenizer_lang == 'de':
                 repo = 'CountFloyd/bark-voice-cloning-german-HuBERT-quantizer'
                 model = 'german-HuBERT-quantizer_14_epoch.pth'
