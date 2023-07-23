@@ -232,7 +232,7 @@ gradio: {gr.__version__}
     
 
 logger = logging.getLogger(__name__)
-APPTITLE = "Bark UI Enhanced v0.7.3"
+APPTITLE = "Bark UI Enhanced v0.7.4"
 
 
 autolaunch = False

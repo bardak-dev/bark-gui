@@ -101,6 +101,11 @@ I'm doing this basically for myself but I'm glad if you enjoy my experiments too
 
 ### Changelog
 
+**23.07.2023** Release V0.7.4
+
+- QoL pulled updates from Suno Main 
+
+
 **04.07.2023** Release V0.7.3
 
 - Spanish tokenizer by [MaxLancer](https://huggingface.co/Lancer1408/bark-es-tokenizer) added
