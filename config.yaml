@@ -6,3 +6,4 @@ server_port: 0
 server_share: false
 silence_between_sentences: 250
 silence_between_speakers: 500
+selected_language: english

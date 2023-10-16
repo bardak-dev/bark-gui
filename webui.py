@@ -33,7 +33,8 @@ import nltk
 settings = Settings('config.yaml')
 
 
-def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eos_prob, quick_generation, complete_settings, seed, batchcount, progress=gr.Progress(track_tqdm=True)):
+def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eos_prob, quick_generation,
+complete_settings, seed, batchcount, selected_language, progress=gr.Progress(track_tqdm=True)):
     # Chunk the text into smaller pieces then combine the generated audio
 
     # generation settings
@@ -103,8 +104,7 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eo
 
                 all_parts += [audio_array]
         else:
-            texts = nltk.sent_tokenize(text.replace("\n", " ").strip(), language="russian")
-            #settings.input_text_language
+            texts = nltk.sent_tokenize(text.replace("\n", " ").strip(), language=selected_language)
             for i, text in tqdm(enumerate(texts), total=len(texts)):
                 print(f"\nGenerating Text ({i+1}/{len(texts)}) -> {selected_speaker} (Seed {currentseed}):`{text}`")
                 complete_text += text
@@ -204,7 +204,8 @@ def start_training(save_model_epoch, max_epochs, progress=gr.Progress(track_tqdm
 
 
 
-def apply_settings(themes, input_server_name, input_server_port, input_server_public, input_desired_len, input_max_len, input_silence_break, input_silence_speaker):
+def apply_settings(themes, input_server_name, input_server_port, input_server_public, input_desired_len,
+input_max_len, input_silence_break, input_silence_speaker, languages):
     settings.selected_theme = themes
     settings.server_name = input_server_name
     settings.server_port = input_server_port
@@ -263,6 +264,7 @@ preload_models()
 nltk.download('punkt')
 
 available_themes = ["Default", "gradio/glass", "gradio/monochrome", "gradio/seafoam", "gradio/soft", "gstaff/xkcd", "freddyaboulton/dracula_revamped", "ysharma/steampunk"]
+available_languages = ["english", "russian"]
 tokenizer_language_list = ["de","en", "es", "pl"]
 prepare_training_list = ["Step 1: Semantics from Text","Step 2: WAV from Semantics"]
 
@@ -308,6 +310,8 @@ while run_server:
         with gr.Tab("TTS"):
             with gr.Row():
                 with gr.Column():
+                    selected_language = gr.Dropdown(available_languages, value=available_languages[0],
+                    label="Text Language")
                     placeholder = "Enter text here."
                     input_text = gr.Textbox(label="Input Text", lines=4, placeholder=placeholder)
                 with gr.Column():
@@ -315,33 +319,6 @@ while run_server:
                         batchcount = gr.Number(label="Batch count", precision=0, value=1)
             with gr.Row():
                 with gr.Column():
-                    examples = [
-                        "Special meanings: [laughter] [laughs] [sighs] [music] [gasps] [clears throat] MAN: WOMAN:",
-                       "♪ Never gonna make you cry, never gonna say goodbye, never gonna tell a lie and hurt you ♪",
-                       "And now — a picture of a larch [laughter]",
-                       """
-                            WOMAN: I would like an oatmilk latte please.
-                            MAN: Wow, that's expensive!
-                       """,
-                       """<?xml version="1.0"?>
-    <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis"
-             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-             xsi:schemaLocation="http://www.w3.org/2001/10/synthesis
-                       http://www.w3.org/TR/speech-synthesis/synthesis.xsd"
-             xml:lang="en-US">
-    <voice name="/v2/en_speaker_9">Look at that drunk guy!</voice>
-    <voice name="/v2/en_speaker_3">Who is he?</voice>
-    <voice name="/v2/en_speaker_9">WOMAN: [clears throat] 10 years ago, he proposed me and I rejected him.</voice>
-    <voice name="/v2/en_speaker_3">Oh my God [laughs] he is still celebrating</voice>
-    </speak>"""
-                       ]
-                    examples = gr.Examples(examples=examples, inputs=input_text)
-                with gr.Column():
-                    convert_to_ssml_button = gr.Button("Convert Input Text to SSML")
-
-            with gr.Row():
-                with gr.Column():
-                    gr.Markdown("[Voice Prompt Library](https://suno-ai.notion.site/8b8e8749ed514b0cbf3f699013548683?v=bc67cff786b04b50b3ceb756fd05f68c)")
                     speaker = gr.Dropdown(speakers_list, value=speakers_list[0], label="Voice")
                 with gr.Column():
                     text_temp = gr.Slider(0.1, 1.0, value=0.6, label="Generation Temperature", info="1.0 more diverse, 0.1 more conservative")
@@ -439,8 +416,9 @@ while run_server:
                 button_delete_files = gr.Button("Clear output folder")
 
         quick_gen_checkbox.change(fn=on_quick_gen_changed, inputs=quick_gen_checkbox, outputs=complete_settings)
-        convert_to_ssml_button.click(convert_text_to_ssml, inputs=[input_text, speaker],outputs=input_text)
-        gen_click = tts_create_button.click(generate_text_to_speech, inputs=[input_text, speaker, text_temp, waveform_temp, eos_prob, quick_gen_checkbox, complete_settings, seedcomponent, batchcount],outputs=output_audio)
+        gen_click = tts_create_button.click(generate_text_to_speech, inputs=[input_text, speaker, text_temp,
+        waveform_temp, eos_prob, quick_gen_checkbox, complete_settings, seedcomponent, batchcount, selected_language],
+        outputs=output_audio)
         button_stop_generation.click(fn=None, inputs=None, outputs=None, cancels=[gen_click])
         # Javascript hack to display modal confirmation dialog
         js = "(x) => confirm('Are you sure? This will remove all files from output folder')"
