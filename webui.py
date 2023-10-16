@@ -103,10 +103,10 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eo
 
                 all_parts += [audio_array]
         else:
-            texts = text.replace("\n", " ").strip()
+            texts = nltk.sent_tokenize(text.replace("\n", " ").strip(), language="russian")
             #settings.input_text_language
-            for text in nltk.sent_tokenize(script, language="russian"):
-                print(f"\nGenerating Text (?) -> {selected_speaker} (Seed {currentseed}):`{text}`")
+            for i, text in tqdm(enumerate(texts), total=len(texts)):
+                print(f"\nGenerating Text ({i+1}/{len(texts)}) -> {selected_speaker} (Seed {currentseed}):`{text}`")
                 complete_text += text
                 if quick_generation == True:
                     with pytorch_seed.SavedRNG(currentseed):
