@@ -28,6 +28,7 @@ from util.helper import create_filename, add_id3_tag
 from swap_voice import swap_voice_from_audio
 from training.training_prepare import prepare_semantics_from_text, prepare_wavs_from_semantics
 from training.train import training_prepare_files, train
+import nltk
 
 settings = Settings('config.yaml')
 
@@ -102,9 +103,10 @@ def generate_text_to_speech(text, selected_speaker, text_temp, waveform_temp, eo
 
                 all_parts += [audio_array]
         else:
-            texts = split_and_recombine_text(text, settings.input_text_desired_length, settings.input_text_max_length)
-            for i, text in tqdm(enumerate(texts), total=len(texts)):
-                print(f"\nGenerating Text ({i+1}/{len(texts)}) -> {selected_speaker} (Seed {currentseed}):`{text}`")
+            texts = text.replace("\n", " ").strip()
+            #settings.input_text_language
+            for text in nltk.sent_tokenize(script, language="russian"):
+                print(f"\nGenerating Text (?) -> {selected_speaker} (Seed {currentseed}):`{text}`")
                 complete_text += text
                 if quick_generation == True:
                     with pytorch_seed.SavedRNG(currentseed):
@@ -258,6 +260,7 @@ print(f'autolaunch={autolaunch}\n\n')
 
 print("Preloading Models\n")
 preload_models()
+nltk.download('punkt')
 
 available_themes = ["Default", "gradio/glass", "gradio/monochrome", "gradio/seafoam", "gradio/soft", "gstaff/xkcd", "freddyaboulton/dracula_revamped", "ysharma/steampunk"]
 tokenizer_language_list = ["de","en", "es", "pl"]
